@@ -1,7 +1,6 @@
 DROP PROCEDURE IF EXISTS `tsp_login`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_login`(pTambo varchar(255), pUsuario varchar(120), 
-pEsPassValido char(1), pToken varchar(500), pApp varchar(50))
+CREATE PROCEDURE `tsp_login`(pUsuario varchar(120), pEsPassValido char(1), pToken varchar(500), pApp varchar(50))
 PROC: BEGIN
 	/*
     Permite realizar el login de un usuario indicando la aplicación a la que desea acceder en 
@@ -39,7 +38,7 @@ PROC: BEGIN
         LEAVE PROC;
 	END IF;
     
-    SET pIdTambo = (SELECT IdTambo FROM Tambos WHERE Nombre = pTambo AND Estado = 'A');
+    SET pIdTambo = (SELECT t.IdTambo FROM Usuarios u INNER JOIN Tambos t USING(IdTambo) WHERE u.Usuario = pUsuario AND t.Estado = 'A');
 	IF pIdTambo IS NULL THEN
 		SELECT 'El tambo al que intenta acceder se encuentra dada de baja.' Mensaje;
         LEAVE PROC;
@@ -113,7 +112,7 @@ PROC: BEGIN
 	CASE pApp
 		WHEN 'A' THEN
 			SELECT 		'OK' Mensaje, u.IdUsuario, u.IdTipoUsuario, u.Usuario, u.Token, u.Email,
-						u.Estado, tu.Tipo
+						u.Estado, tu.Tipo TipoUsuario
 			FROM 		Usuarios u
             INNER JOIN 	TiposUsuarios tu USING(IdTipoUsuario)
 			-- LEFT JOIN 	(SELECT * FROM UsuariosPuntosVenta WHERE IdUsuario = pIdUsuario AND Estado = 'A') upv USING(IdUsuario)
@@ -170,5 +169,18 @@ BEGIN
     SELECT	Permiso
     FROM	Permisos p INNER JOIN TiposUsuarios tu USING(IdTipoUsuario)
     WHERE	IdTipoUsuario = (SELECT	IdTipoUsuario FROM Usuarios WHERE Token = pToken);
+END$$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `tsp_dame_tipo_usuario`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_dame_tipo_usuario`(pToken varchar(500))
+BEGIN
+	/*
+    Permite obtener el tipo de usuario de un usuario a partir de su nombre de usuario.
+    */
+	SELECT tu.Tipo TipoUsuario
+	FROM TiposUsuarios tu INNER JOIN Usuarios u USING(IdTipoUsuario)
+	WHERE u.Token = pToken;
 END$$
 DELIMITER ;
