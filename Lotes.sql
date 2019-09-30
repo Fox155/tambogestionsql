@@ -48,6 +48,10 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS `tsp_modificar_lote`; 
 DELIMITER $$
 CREATE PROCEDURE `tsp_modificar_lote`(pIdlote int , pNombre varchar (45))
+/*
+Permite modificar el nombre de un lote, siempre que el nombre del mismo no este repetido dentro de la misma sucursal.
+Devuelve OK o el mensaje de error en Mensaje.
+*/
 SALIR: BEGIN
 DECLARE pMensaje varchar(100);
 DECLARE pIdSucursal int;
@@ -157,5 +161,88 @@ SALIR: BEGIN
             AND (IdSucursal = pIdSucursal OR pIdSucursal = 0)
             AND (pIncluyeBajas = 'S'  OR l.Estado = 'A')
     ORDER BY s.Nombre,l.nombre;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ DAR DE BAJA UN LOTE /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_darbaja_lote`; 
+DELIMITER $$
+CREATE PROCEDURE `tsp_darbaja_lote`(pIdlote int)
+/*
+Permite dar de baja un lote, controlando que no este dado de baja ya.
+ -- >Por agregar: pConfirmacion char(1) Si recibe 'S' en confirmacion dara de baja a todas las vacas del lote.  
+Devuelve OK o el mensaje de error en Mensaje.
+*/
+SALIR: BEGIN
+DECLARE pMensaje varchar(100);
+-- Manejo de error en la transacción
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+		-- SHOW ERRORS;
+		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
+        ROLLBACK;
+	END;
+    -- Controla Parámetros Vacios
+    IF (pIdlote IS NULL OR pIdlote = 0) THEN
+        SELECT 'Debe indicar el lote.' Mensaje;
+        LEAVE SALIR;
+	END IF;	
+    -- IF (pConfirmacion IS NULL OR pIdlote = 0) THEN
+    --     SELECT 'Debe indicar un valor para la confirmacion de bajas de las vacas.' Mensaje;
+    --     LEAVE SALIR;
+	-- END IF;	
+    
+    -- Control de Parámetros incorrectos
+    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE Idlote = pIdlote) THEN
+		SELECT 'El lote indicado no existe.' Mensaje;
+		LEAVE SALIR;
+	END IF;
+	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  Idlote = pIdlote AND Estado='B') THEN
+		SELECT 'El Lote ya se encuentra dado de baja.' Mensaje;
+		LEAVE SALIR;
+	END IF; 
+    START TRANSACTION; 
+            -- Modifica el estado del lote
+			UPDATE  Lotes SET  Estado = 'B' WHERE   IdLote = pIdlote;
+     SELECT 'OK' Mensaje;
+	COMMIT;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ ACTIVAR UN LOTE /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_activar_lote`; 
+DELIMITER $$
+CREATE PROCEDURE `tsp_activar_lote`(pIdlote int)
+/*
+Permite activar un lote, controlando que no este no este activoya. 
+Devuelve OK o el mensaje de error en Mensaje.
+*/
+SALIR: BEGIN
+DECLARE pMensaje varchar(100);
+-- Manejo de error en la transacción
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+		-- SHOW ERRORS;
+		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
+        ROLLBACK;
+	END;
+    -- Controla Parámetros Vacios
+    IF (pIdlote IS NULL OR pIdlote = 0) THEN
+        SELECT 'Debe indicar el lote.' Mensaje;
+        LEAVE SALIR;
+	END IF;	
+    -- Control de Parámetros incorrectos
+    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE Idlote = pIdlote) THEN
+		SELECT 'El lote indicado no existe.' Mensaje;
+		LEAVE SALIR;
+	END IF;
+	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  Idlote = pIdlote AND Estado='A') THEN
+		SELECT 'El Lote ya se encuentra dado Activo.' Mensaje;
+		LEAVE SALIR;
+	END IF; 
+    START TRANSACTION;  
+			UPDATE  Lotes SET Estado = 'A' WHERE   IdLote = pIdlote;
+     SELECT 'OK' Mensaje;
+	COMMIT;
 END$$
 DELIMITER ;

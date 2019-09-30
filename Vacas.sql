@@ -179,20 +179,22 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR  VACAS /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_vacas`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_vacas`(pIdSucursal int,pIdentificador int, pCadena varchar(100),pIncluyeBajas char(1))
+CREATE PROCEDURE `tsp_buscar_vacas`(pIdSucursal int, pIdLote int, pCadena varchar(100),pIncluyeBajas char(1))
 SALIR: BEGIN
 	/*
 	Permite buscar Vacas dentro de los lotes de una Sucursal, indicando una cadena de búsqueda.  
 	*/
-    SELECT  v.*  
+    SELECT  v.*, l.IdLote, l.Nombre Lote, s.IdSucursal, s.Nombre Sucursal , ev.Estado
     FROM    Vacas v 
     INNER JOIN EstadosVacas ev USING (IdVaca)
     INNER JOIN VacasLote vl USING (IdVaca)
     INNER JOIN Lotes l USING(IdLote)
+    INNER JOIN Sucursales s ON l.IdSucursal = s.IdSucursal
     WHERE l.IdSucursal = pIdSucursal 
-            AND  v.Nombre LIKE CONCAT('%', pCadena, '%')
-            AND  (v.IdCaravana = pIdentificador OR  pIdentificador=0 ) 
-            AND  (v.IdRFID = pIdentificador OR pIdentificador=0);
+			AND  (l.IdLote = pIdLote OR pIdLote = 0)
+            AND  (v.Nombre LIKE CONCAT('%', pCadena, '%')
+				OR v.IdCaravana LIKE CONCAT('%', pCadena, '%')
+                OR v.IdRFID LIKE CONCAT('%', pCadena, '%'));
            -- AND ((pIncluyeBajas = 'S'  OR ev.Estado = 'BAJA') AND FechaInicio <= NOW() AND FechaFin = null);
 END$$
 DELIMITER ;

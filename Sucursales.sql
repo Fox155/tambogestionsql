@@ -4,7 +4,7 @@ DELIMITER $$
 CREATE PROCEDURE `tsp_alta_sucursal`(pIdTambo int , pNombre varchar (45), pDatos json)
 SALIR: BEGIN
 	/*
-	Permite dar de alta una Sucursal, siempre el nombre de la misma no este repetido dentro del mismo tambo .
+	Permite dar de alta una Sucursal, siempre el nombre de la misma no este repetido dentro del mismo tambo.
     Devuelve OK+Id o el mensaje de error en Mensaje.
 	*/
     DECLARE pMensaje varchar(100);
