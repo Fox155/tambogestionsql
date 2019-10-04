@@ -153,13 +153,16 @@ SALIR: BEGIN
 	Permite buscar Lotes dentro de una Sucursal , indicando una cadena de búsqueda. 
     Si pIdSucursal = 0 lista para todos los Lotes de todas las sucursales.
 	*/
-    SELECT  s.Nombre Sucursal, l.*  
+    SELECT  s.Nombre Sucursal,COUNT(vl.IdVaca) AS Ganado , l.*  
     FROM    Lotes l 
+    INNER JOIN VacasLote vl on vl.IdLote = l.IdLote  
     INNER JOIN Sucursales s USING(IdSucursal)
     WHERE   l.Nombre LIKE CONCAT('%', pCadena, '%') 
+            AND vl.FechaEgreso IS NULL
             AND (IdTambo = pIdTambo)
             AND (IdSucursal = pIdSucursal OR pIdSucursal = 0)
             AND (pIncluyeBajas = 'S'  OR l.Estado = 'A')
+    GROUP BY l.IdLote
     ORDER BY s.Nombre,l.nombre;
 END$$
 DELIMITER ;
