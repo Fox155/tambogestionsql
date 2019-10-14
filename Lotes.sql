@@ -196,11 +196,11 @@ DECLARE pMensaje varchar(100);
 	-- END IF;	
     
     -- Control de Parámetros incorrectos
-    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE Idlote = pIdlote) THEN
+    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE IdLote = pIdlote) THEN
 		SELECT 'El lote indicado no existe.' Mensaje;
 		LEAVE SALIR;
 	END IF;
-	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  Idlote = pIdlote AND Estado='B') THEN
+	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  IdLote = pIdlote AND Estado='B') THEN
 		SELECT 'El Lote ya se encuentra dado de baja.' Mensaje;
 		LEAVE SALIR;
 	END IF; 
@@ -235,11 +235,11 @@ DECLARE pMensaje varchar(100);
         LEAVE SALIR;
 	END IF;	
     -- Control de Parámetros incorrectos
-    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE Idlote = pIdlote) THEN
+    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE IdLote = pIdlote) THEN
 		SELECT 'El lote indicado no existe.' Mensaje;
 		LEAVE SALIR;
 	END IF;
-	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  Idlote = pIdlote AND Estado='A') THEN
+	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  IdLote = pIdlote AND Estado='A') THEN
 		SELECT 'El Lote ya se encuentra dado Activo.' Mensaje;
 		LEAVE SALIR;
 	END IF; 

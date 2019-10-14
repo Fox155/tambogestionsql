@@ -165,3 +165,79 @@ SALIR: BEGIN
             AND (pIncluyeBajas = 'S'  OR Estado = 'A');
 END$$
 DELIMITER ;
+-- -----------------------------------------------/ DAR DE BAJA UNA LISTA DE PRECIOS /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_darbaja_listaprecio`; 
+DELIMITER $$
+CREATE PROCEDURE `tsp_darbaja_listaprecio`(pIdlistaprecios  int)
+/*
+Permite dar de baja una lista de precio, controlando que no este dado de baja ya.
+Devuelve OK o el mensaje de error en Mensaje.
+*/
+SALIR: BEGIN
+DECLARE pMensaje varchar(100);
+-- Manejo de error en la transacción
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+		-- SHOW ERRORS;
+		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
+        ROLLBACK;
+	END;
+    -- Controla Parámetros Vacios
+    IF (pIdlistaprecios  IS NULL OR pIdlistaprecios  = 0) THEN
+        SELECT 'Debe indicar una lista de precio.' Mensaje;
+        LEAVE SALIR;
+	END IF;	
+    -- Control de Parámetros incorrectos
+    IF NOT EXISTS(SELECT Lista FROM ListasPrecio WHERE IdListaPrecio  = pIdlistaprecios) THEN
+		SELECT 'La lista de precios indicada no existe.' Mensaje;
+		LEAVE SALIR;
+	END IF;
+	IF EXISTS(SELECT Lista FROM ListasPrecio WHERE  IdListaPrecio  = pIdlistaprecios  AND Estado='B') THEN
+		SELECT 'La lista de precios ya se encuentra dada de baja.' Mensaje;
+		LEAVE SALIR;
+	END IF; 
+    START TRANSACTION; 
+            -- Modifica el estado del lote
+			UPDATE  ListasPrecio SET  Estado = 'B' WHERE IdListaPrecio = pIdlistaprecios ;
+     SELECT 'OK' Mensaje;
+	COMMIT;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ ACTIVAR UNA LISTA DE PRECIOS /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_activar_listaprecio`; 
+DELIMITER $$
+CREATE PROCEDURE `tsp_activar_listaprecio`(pIdlistaprecios  int)
+/*
+Permite activar una lista de precio, controlando que no este no este activa ya. 
+Devuelve OK o el mensaje de error en Mensaje.
+*/
+SALIR: BEGIN
+DECLARE pMensaje varchar(100);
+-- Manejo de error en la transacción
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+		-- SHOW ERRORS;
+		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
+        ROLLBACK;
+	END;
+    -- Controla Parámetros Vacios
+    IF (pIdlistaprecios  IS NULL OR pIdlistaprecios  = 0) THEN
+        SELECT 'Debe indicar una lista de precio.' Mensaje;
+        LEAVE SALIR;
+	END IF;	
+    -- Control de Parámetros incorrectos
+    IF NOT EXISTS(SELECT Lista FROM ListasPrecio WHERE IdListaPrecio  = pIdlistaprecios) THEN
+		SELECT 'La lista de precios indicada no existe.' Mensaje;
+		LEAVE SALIR;
+	END IF;
+	IF EXISTS(SELECT Lista FROM ListasPrecio WHERE  IdListaPrecio  = pIdlistaprecios  AND Estado='A') THEN
+		SELECT 'La lista de precios ya se encuentra activa.' Mensaje;
+		LEAVE SALIR;
+	END IF; 
+    START TRANSACTION;  
+			UPDATE  ListasPrecio SET Estado = 'A' WHERE   IdListaPrecio  = pIdlistaprecios ;
+     SELECT 'OK' Mensaje;
+	COMMIT;
+END$$
+DELIMITER ;
