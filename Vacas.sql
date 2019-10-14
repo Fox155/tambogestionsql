@@ -194,7 +194,9 @@ SALIR: BEGIN
 			AND  (l.IdLote = pIdLote OR pIdLote = 0)
             AND  (v.Nombre LIKE CONCAT('%', pCadena, '%')
 				OR v.IdCaravana LIKE CONCAT('%', pCadena, '%')
-                OR v.IdRFID LIKE CONCAT('%', pCadena, '%'));
-           -- AND ((pIncluyeBajas = 'S'  OR ev.Estado = 'BAJA') AND FechaInicio <= NOW() AND FechaFin = null);
+                OR v.IdRFID LIKE CONCAT('%', pCadena, '%')
+                OR ev.Estado LIKE CONCAT('%', pCadena, '%'))
+            AND (pIncluyeBajas = 'S'  OR ev.Estado <> 'BAJA')
+            AND (ev.FechaInicio <= NOW() AND ev.FechaFin IS NULL);
 END$$
 DELIMITER ;

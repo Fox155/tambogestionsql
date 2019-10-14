@@ -168,11 +168,10 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR  SUCURSALES /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_sucursales`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_sucursales`(pIdTambo int, pIdSucursal int, pCadena varchar(100))
+CREATE PROCEDURE `tsp_buscar_sucursales`(pIdTambo int, pCadena varchar(100))
 SALIR: BEGIN
 	/*
 	Permite buscar Sucursales dentro de un tambo , indicando una cadena de búsqueda. 
-    Si pIdSucursal = 0 lista para todos las sucursales del tambo.
 	*/
     SELECT  *  
     FROM    Sucursales
