@@ -55,6 +55,10 @@ SALIR: BEGIN
 		SELECT 'Ya existe dentro del Tambo un cliente con ese TipoDoc y NroDoc.' Mensaje;
 		LEAVE SALIR;
 	END IF;
+    IF EXISTS(SELECT Estado FROM ListasPrecio WHERE IdListaPrecio = pIdListaPrecio AND Estado = 'B' ) THEN
+		SELECT 'Seleccione una Lista de Precio que no este dada de baja.' Mensaje;
+		LEAVE SALIR;
+	END IF;
 
     START TRANSACTION;
         SET pEstado = 'A';
@@ -179,21 +183,21 @@ SALIR: BEGIN
 END$$
 DELIMITER ;
 -- -----------------------------------------------/ BUSCAR CLIENTE /----------------------------------------
-DROP PROCEDURE IF EXISTS `tsp_buscar_cliente`;
+DROP PROCEDURE IF EXISTS `tsp_buscar_clientes`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_cliente`(pIdTambo int,pIdCliente int, pCadena varchar(45),pIncluyeBajas char(1))
+CREATE PROCEDURE `tsp_buscar_clientes`(pIdTambo int,pCadena varchar(45),pIncluyeBajas char(1))
 SALIR: BEGIN
 	/*
 	Permite buscar Clientes dentro de un tambo , indicando una cadena de búsqueda.
-    Si pIdCliente=0 muestra todos los clientes del tambo.
 	*/
-    SELECT  *  
-    FROM    Clientes
-    WHERE   (Apellido LIKE CONCAT('%', pCadena, '%')
-            OR NroDoc LIKE CONCAT('%', pCadena, '%')) 
-            AND (IdTambo = pIdTambo)
-            AND (IdCliente = pIdCliente OR pIdCliente = 0)
-            AND (pIncluyeBajas = 'S'  OR Estado = 'A');
+    SELECT  c.*, lp.Lista, lp.Precio   
+    FROM    Clientes c
+    INNER JOIN ListasPrecio lp
+    WHERE   (c.Apellido LIKE CONCAT('%', pCadena, '%')
+            OR c.NroDoc LIKE CONCAT('%', pCadena, '%')) 
+            AND (c.IdTambo = pIdTambo)
+            AND c.IdListaPrecio = lp.IdListaPrecio
+            AND (pIncluyeBajas = 'S'  OR c.Estado = 'A');
 END$$
 DELIMITER ;
 
