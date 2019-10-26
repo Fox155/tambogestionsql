@@ -179,3 +179,22 @@ SALIR: BEGIN
             AND (IdTambo = pIdTambo);
 END$$
 DELIMITER ;
+
+-- -----------------------------------------------/ RESUMEN REGISTRO DE LECHE /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_resumen_registroleche`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_resumen_registroleche`(pIdSucursal int, pLimite int)
+SALIR: BEGIN
+	/*
+	Permite buscar los ultimos registros de leche dentro de una Sucursal. 
+	*/
+    SELECT  JSON_ARRAYAGG(tt.Litros) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+    FROM    (
+        SELECT Litros, Fecha
+        FROM RegistrosLeche
+        WHERE   IdSucursal = pIdSucursal
+        ORDER BY Fecha DESC
+        LIMIT pLimite
+    ) tt;
+END$$
+DELIMITER ;
