@@ -198,3 +198,38 @@ SALIR: BEGIN
            -- AND ((pIncluyeBajas = 'S'  OR ev.Estado = 'BAJA') AND FechaInicio <= NOW() AND FechaFin = null);
 END$$
 DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR LACTANCIAS VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_lactancias_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_lactancias_vaca`(pIdVaca int)
+SALIR: BEGIN
+	/*
+	Permite buscar las lactancias una Vaca. 
+	*/
+    SELECT  l.*
+    FROM Lactancias l
+    INNER JOIN Vacas v USING(IdVaca)
+    WHERE v.IdVaca = pIdVaca
+    ORDER BY l.NroLactancia;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR LACTANCIAS VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_lactancias`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_lactancias`(pIdVaca int)
+SALIR: BEGIN
+	/*
+	Permite buscar las lactancias una Vaca. 
+	*/
+    SELECT  JSON_ARRAYAGG(tt.Litros) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+    FROM    (
+        SELECT Litros, Fecha
+        FROM RegistrosLeche
+        WHERE   IdSucursal = pIdSucursal
+        ORDER BY Fecha DESC
+        LIMIT pLimite
+    ) tt;
+END$$
+DELIMITER ;
