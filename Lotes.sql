@@ -153,13 +153,16 @@ SALIR: BEGIN
 	Permite buscar Lotes dentro de una Sucursal , indicando una cadena de búsqueda. 
     Si pIdSucursal = 0 lista para todos los Lotes de todas las sucursales.
 	*/
-    SELECT  s.Nombre Sucursal, l.*  
+    SELECT  s.Nombre Sucursal,COUNT(vl.IdVaca) AS Ganado , l.*  
     FROM    Lotes l 
+    INNER JOIN VacasLote vl on vl.IdLote = l.IdLote  
     INNER JOIN Sucursales s USING(IdSucursal)
     WHERE   l.Nombre LIKE CONCAT('%', pCadena, '%') 
+            AND vl.FechaEgreso IS NULL
             AND (IdTambo = pIdTambo)
             AND (IdSucursal = pIdSucursal OR pIdSucursal = 0)
             AND (pIncluyeBajas = 'S'  OR l.Estado = 'A')
+    GROUP BY l.IdLote
     ORDER BY s.Nombre,l.nombre;
 END$$
 DELIMITER ;
@@ -193,11 +196,11 @@ DECLARE pMensaje varchar(100);
 	-- END IF;	
     
     -- Control de Parámetros incorrectos
-    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE Idlote = pIdlote) THEN
+    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE IdLote = pIdlote) THEN
 		SELECT 'El lote indicado no existe.' Mensaje;
 		LEAVE SALIR;
 	END IF;
-	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  Idlote = pIdlote AND Estado='B') THEN
+	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  IdLote = pIdlote AND Estado='B') THEN
 		SELECT 'El Lote ya se encuentra dado de baja.' Mensaje;
 		LEAVE SALIR;
 	END IF; 
@@ -232,11 +235,11 @@ DECLARE pMensaje varchar(100);
         LEAVE SALIR;
 	END IF;	
     -- Control de Parámetros incorrectos
-    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE Idlote = pIdlote) THEN
+    IF NOT EXISTS(SELECT Nombre FROM  Lotes  WHERE IdLote = pIdlote) THEN
 		SELECT 'El lote indicado no existe.' Mensaje;
 		LEAVE SALIR;
 	END IF;
-	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  Idlote = pIdlote AND Estado='A') THEN
+	IF EXISTS(SELECT Estado FROM  Lotes  WHERE  IdLote = pIdlote AND Estado='A') THEN
 		SELECT 'El Lote ya se encuentra dado Activo.' Mensaje;
 		LEAVE SALIR;
 	END IF; 
