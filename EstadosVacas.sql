@@ -1,4 +1,4 @@
--- -----------------------------------------------/ CAMBIAR LOTE /----------------------------------------
+-- -----------------------------------------------/ CAMBIAR ESTADOVACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_cambiar_estadovaca`;
 DELIMITER $$
 CREATE PROCEDURE `tsp_cambiar_estadovaca`(pEstadoNuevo char(15), pIdVaca int,pFechaCambio date)
@@ -35,8 +35,8 @@ SALIR: BEGIN
     IF (pEstadoViejo = pEstadoNuevo) THEN
 		SELECT 'Ingrese un estado distinto al actual de la vaca.' Mensaje;
 		LEAVE SALIR;
-	END IF;  
-    START TRANSACTION; 
+	END IF;
+    START TRANSACTION;
     -- Insercion de la fecha fin del estado actual de la vaca.
     UPDATE EstadosVacas SET FechaFin = pFechaCambio WHERE IdVaca = pIdVaca and FechaFin IS null;
     -- Insercion del nuevo estado de la vaca.
