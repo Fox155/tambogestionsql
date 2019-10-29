@@ -168,3 +168,16 @@ BEGIN
 	WHERE u.Token = pToken;
 END$$
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `tsp_dame_tipo_usuario`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_dame_tipo_usuario`(pToken varchar(500))
+BEGIN
+	/*
+    Permite obtener el tipo de usuario de un usuario a partir de su nombre de usuario.
+    */
+	SELECT tu.Tipo TipoUsuario
+	FROM TiposUsuarios tu INNER JOIN Usuarios u USING(IdTipoUsuario)
+	WHERE u.Token = pToken;
+END$$
+DELIMITER ;
