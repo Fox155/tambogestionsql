@@ -74,7 +74,7 @@ PROC: BEGIN
 					LEAVE PROC;
 				END IF;
 				
-				IF (SELECT IntentosPass FROM Usuarios WHERE Usuario = pUsuario) >= 3 THEN
+				IF (SELECT IntentosPass FROM Usuarios WHERE Usuario = pUsuario) >= 5 THEN
 				
 					UPDATE	Usuarios
 					SET		Estado = 'S'
@@ -103,20 +103,17 @@ PROC: BEGIN
 				-- SELECT 0, NOW(), CONCAT(pIdUsuario,'@',pUsuario), pIP, pUserAgent, pApp, 'LOGIN', 'D', Usuarios.* 
 				-- FROM Usuarios WHERE IdUsuario = pIdUsuario;
                 
-                -- INSERT INTO	SesionesUsuarios
-                -- SELECT		0, pIdUsuario, NOW(), NULL, pIP, pApp, pUserAgent;
-                
                 COMMIT;
             END;
         END CASE;     
 	CASE pApp
 		WHEN 'A' THEN
 			SELECT 		'OK' Mensaje, u.IdUsuario, u.IdTipoUsuario, u.Usuario, u.Token, u.Email,
-						u.Estado, tu.Tipo TipoUsuario
-			FROM 		Usuarios u
-            INNER JOIN 	TiposUsuarios tu USING(IdTipoUsuario)
-			-- LEFT JOIN 	(SELECT * FROM UsuariosPuntosVenta WHERE IdUsuario = pIdUsuario AND Estado = 'A') upv USING(IdUsuario)
-			WHERE		Usuario = pUsuario;
+						u.Estado, tu.Tipo TipoUsuario, JSON_ARRAYAGG(us.IdSucursal) IdsSucursales
+			FROM 	Usuarios u
+			INNER JOIN TiposUsuarios tu USING(IdTipoUsuario)
+			LEFT JOIN UsuariosSucursales us USING(IdUsuario)
+			WHERE	u.IdUsuario = pIdUsuario;
 	END CASE;
 END $$
 DELIMITER ;
@@ -151,24 +148,11 @@ PROC: BEGIN
 	/*
     Permite instanciar un usuario desde la base de datos.
     */
-    SELECT	u.*, tu.IdTipoUsuario, tu.Tipo
+    SELECT	u.*, tu.Tipo TipoUsuario, JSON_ARRAYAGG(us.IdSucursal) IdsSucursales
     FROM 	Usuarios u
 	INNER JOIN TiposUsuarios tu USING(IdTipoUsuario)
+    LEFT JOIN UsuariosSucursales us USING(IdUsuario)
     WHERE	u.IdUsuario = pIdUsuario;
-END$$
-DELIMITER ;
-
-DROP PROCEDURE IF EXISTS `tsp_dame_permisos_usuario`;
-DELIMITER $$
-CREATE PROCEDURE `tsp_dame_permisos_usuario`(pToken varchar(500))
-BEGIN
-	/*
-    Permite devolver en un resultset la lista de variables de permiso que el
-	usuario tiene habilitados. Se valida con el token de sesión.
-    */
-    SELECT	Permiso
-    FROM	Permisos p INNER JOIN TiposUsuarios tu USING(IdTipoUsuario)
-    WHERE	IdTipoUsuario = (SELECT	IdTipoUsuario FROM Usuarios WHERE Token = pToken);
 END$$
 DELIMITER ;
 
