@@ -74,7 +74,7 @@ DELIMITER ;
 -- -----------------------------------------------/ MODIFICAR VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_modificar_vaca`; 
 DELIMITER $$
-CREATE PROCEDURE `tsp_modificar_vaca`(pIdVaca int, pIdCaravana int, pIdRFID int,pNombre varchar (45),pRaza varchar (45),pPeso tinyint, pFechaNac date, pObservaciones text)
+CREATE PROCEDURE `tsp_modificar_vaca`(pIdVaca int, pIdCaravana int, pIdRFID int,pNombre varchar (45),pRaza varchar (45),pPeso smallint, pFechaNac date, pObservaciones text)
 SALIR: BEGIN
 /*
 	Permite modificar los datos de una vaca. El IdCarava, IdRFIDVaca podran ser modificados si no hay otra vaca con los mismos datos en una misma fecha.
