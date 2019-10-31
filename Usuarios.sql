@@ -17,7 +17,7 @@ SALIR:BEGIN
     -- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-		-- show errors;
+		-- SHOW ERRORS;
 		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
         ROLLBACK;
 	END;
@@ -59,7 +59,7 @@ SALIR:BEGIN
     WHERE		u.Token = pTokenAud AND u.Estado = 'A'
 	LIMIT		1;
 
-	IF (pIdUsuario IS NULL) THEN
+	IF (pIdUsuarioAud IS NULL) THEN
 		SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -69,7 +69,7 @@ SALIR:BEGIN
         SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
         LEAVE SALIR;
 	END IF;
-	IF NOT EXISTS (SELECT IdTambo FROM Tambos t INNER JOIN Usuarios u USING(IdTambo) WHERE t.Estado != 'A' AND u.IdUsuario = pIdUsuario) THEN
+	IF NOT EXISTS (SELECT IdTambo FROM Tambos t INNER JOIN Usuarios u USING(IdTambo) WHERE t.Estado = 'A' AND u.IdUsuario = pIdUsuarioAud) THEN
 		SELECT 'Usted no posee puede para realizar esta acción, su tambo no está habilitada.' Mensaje;
 		LEAVE SALIR;
     END IF;
@@ -78,7 +78,7 @@ SALIR:BEGIN
 		SELECT Usuario, IdTambo INTO pUsuarioAud, pIdTambo FROM Usuarios WHERE IdUsuario = pIdUsuarioAud;
         
         SET pToken = (SELECT SHA2(RAND(), 512));
-        INSERT INTO Usuarios VALUES (pIdTambo, pIdTipoUsuario, pUsuario, pEmail, pPassword, pToken, 0, NOW(), 'A');
+        INSERT INTO Usuarios VALUES (DEFAULT ,pIdTambo, pIdTipoUsuario, pUsuario, pEmail, pPassword, pToken, 0, NOW(), 'A');
 
 		-- Audita
 		-- INSERT INTO aud_Usuarios
@@ -90,9 +90,9 @@ SALIR:BEGIN
 END$$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `xsp_modificar_usuario`;
+DROP PROCEDURE IF EXISTS `tsp_modificar_usuario`;
 DELIMITER $$
-CREATE PROCEDURE `xsp_modificar_usuario`(pToken varchar(500), pIdUsuario bigint,
+CREATE PROCEDURE `tsp_modificar_usuario`(pToken varchar(500), pIdUsuario bigint,
 pIdTipoUsuario tinyint, pEmail varchar(100))
 SALIR: BEGIN
 	/*
@@ -154,9 +154,9 @@ SALIR: BEGIN
 END$$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `xsp_borra_usuario`;
+DROP PROCEDURE IF EXISTS `tsp_borra_usuario`;
 DELIMITER $$
-CREATE PROCEDURE `xsp_borra_usuario`(pToken varchar(500), pIdUsuario int)
+CREATE PROCEDURE `tsp_borra_usuario`(pToken varchar(500), pIdUsuario int)
 SALIR: BEGIN
 	/*
     Permite borrar un Usuario existente controlando que no existan Sucursales asociadas.
@@ -216,9 +216,9 @@ PROC: BEGIN
 END$$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `xsp_buscar_usuarios`;
+DROP PROCEDURE IF EXISTS `tsp_buscar_usuarios`;
 DELIMITER $$
-CREATE PROCEDURE `xsp_buscar_usuarios`(pIdTambo int, pCadena varchar(30), pEstado char(1), pIdTipoUsuario tinyint)
+CREATE PROCEDURE `tsp_buscar_usuarios`(pIdTambo int, pCadena varchar(30), pEstado char(1), pIdTipoUsuario tinyint)
 BEGIN
 	/*
     Permite buscar los usuarios de un tambo dada una cadena de búsqueda, estado (T: todos los estados),
@@ -240,9 +240,9 @@ BEGIN
 END$$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `xsp_activar_usuario`;
+DROP PROCEDURE IF EXISTS `tsp_activar_usuario`;
 DELIMITER $$
-CREATE PROCEDURE `xsp_activar_usuario`(pToken varchar(500), pIdUsuario int)
+CREATE PROCEDURE `tsp_activar_usuario`(pToken varchar(500), pIdUsuario int)
 SALIR: BEGIN
 	/*
     Permite cambiar el estado del Usuario a Activo siempre y cuando no esté activo ya. 
@@ -290,9 +290,9 @@ SALIR: BEGIN
 END$$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `xsp_dar_baja_usuario`;
+DROP PROCEDURE IF EXISTS `tsp_dar_baja_usuario`;
 DELIMITER $$
-CREATE PROCEDURE `xsp_dar_baja_usuario`(pToken varchar(500), pIdUsuario int)
+CREATE PROCEDURE `tsp_dar_baja_usuario`(pToken varchar(500), pIdUsuario int)
 SALIR: BEGIN
 	/*
     Permite cambiar el estado del Usuario a Baja siempre y cuando no esté dado de baja ya. 
@@ -483,9 +483,9 @@ PROC: BEGIN
 END $$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `xsp_cambiar_password`;
+DROP PROCEDURE IF EXISTS `tsp_cambiar_password`;
 DELIMITER $$
-CREATE PROCEDURE `xsp_cambiar_password`(pModo char(1), pToken varchar(500), pPasswordNew varchar(255))
+CREATE PROCEDURE `tsp_cambiar_password`(pModo char(1), pToken varchar(500), pPasswordNew varchar(255))
 SALIR: BEGIN
 	/*
     Permite cambiar la contraseña por el hash recibido como parámetro.
@@ -548,9 +548,9 @@ SALIR: BEGIN
 END$$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `xsp_restablecer_password`;
+DROP PROCEDURE IF EXISTS `tsp_restablecer_password`;
 DELIMITER $$
-CREATE PROCEDURE `xsp_restablecer_password`(pToken varchar(500), pIdUsuario int, pPassword varchar(255))
+CREATE PROCEDURE `tsp_restablecer_password`(pToken varchar(500), pIdUsuario int, pPassword varchar(255))
 SALIR: BEGIN
 	/*
 	Permite setear Estado en C y setear un nuevo Password, para un usuario indicado.
@@ -618,5 +618,17 @@ BEGIN
 	SELECT tu.Tipo TipoUsuario
 	FROM TiposUsuarios tu INNER JOIN Usuarios u USING(IdTipoUsuario)
 	WHERE u.Token = pToken;
+END$$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `tsp_listar_tipos_usuario`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_tipos_usuario`()
+BEGIN
+	/*
+    Permite listar los tipos de usuario.
+    */
+	SELECT tu.*
+	FROM TiposUsuarios tu;
 END$$
 DELIMITER ;
