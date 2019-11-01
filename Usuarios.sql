@@ -140,8 +140,7 @@ SALIR: BEGIN
         -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
 		-- Modifica
         UPDATE Usuarios 
-		SET		Nombres=pNombres,
-				Email=pEmail,
+		SET		Email=pEmail,
 				IdTipoUsuario=pIdTipoUsuario
 		WHERE	IdUsuario=pIdUsuario;
 		-- Despues

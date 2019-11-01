@@ -224,7 +224,7 @@ DECLARE pMensaje varchar(100);
         LEAVE SALIR;
 	END IF;	
     -- Control de Parámetros incorrectos
-    IF NOT EXISTS(SELECT Idcliente FROM Clientes WHERE Idcliente = pIdCliente) THEN
+    IF NOT EXISTS(SELECT IdCliente FROM Clientes WHERE IdCliente = pIdCliente) THEN
 		SELECT 'El Cliente indicado no existe.' Mensaje;
 		LEAVE SALIR;
 	END IF;
