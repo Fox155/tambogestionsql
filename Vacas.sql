@@ -200,3 +200,59 @@ SALIR: BEGIN
             AND (ev.FechaInicio <= NOW() AND ev.FechaFin IS NULL);
 END$$
 DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR LACTANCIAS VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_lactancias_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_lactancias_vaca`(pIdVaca int)
+SALIR: BEGIN
+	/*
+	Permite listar las lactancias una Vaca. 
+	*/
+    SELECT  l.*
+    FROM Lactancias l
+    INNER JOIN Vacas v USING(IdVaca)
+    WHERE v.IdVaca = pIdVaca
+    ORDER BY l.NroLactancia;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR PRODUCCIONES VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_producciones_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_producciones_vaca`(pIdVaca int, pNroLactancia tinyint)
+SALIR: BEGIN
+	/*
+	Permite listar las producciones de una lactancia de una Vaca. 
+	*/
+    SELECT  p.*
+    FROM Producciones p
+    INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+    INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+    WHERE   v.IdVaca = pIdVaca
+        AND l.NroLactancia = pNroLactancia
+    ORDER BY l.NroLactancia;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ RESUMEN PRODUCCIONES VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_resumen_producciones_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_resumen_producciones_vaca`(pIdVaca int)
+SALIR: BEGIN
+	/*
+	Permite listar las producciones de la ultima lactancia de una Vaca, en funcion de sus sesiones de ordeñe. 
+	*/
+    SELECT  JSON_ARRAYAGG(tt.Produccion) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+    FROM (
+        SELECT p.Produccion, so.Fecha
+        FROM Producciones p
+        INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+        INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+        INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+        WHERE   v.IdVaca = pIdVaca
+            AND l.FechaFin IS NULL
+        ORDER BY Fecha DESC
+    ) tt;
+END$$
+DELIMITER ;

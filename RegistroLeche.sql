@@ -1,8 +1,7 @@
-
 -- -----------------------------------------------/ ALTA REGISTRO DE LECHE /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_alta_registroleche`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_alta_registroleche`(pIdSucursal int ,plitros decimal, pfecha date)
+CREATE PROCEDURE `tsp_alta_registroleche`(pIdSucursal int, pLitros decimal(12,2), pFecha date)
 SALIR: BEGIN
 	/*
 	Permite dar de alta un registro de leche de una sucursal.
@@ -10,7 +9,7 @@ SALIR: BEGIN
     Devuelve OK+Id o el mensaje de error en Mensaje.
 	*/
     DECLARE pMensaje varchar(100);
-    DECLARE pIdregistroleche bigint;
+    DECLARE pIdRegistroLeche bigint;
     	-- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -20,34 +19,43 @@ SALIR: BEGIN
 	END;
     -- Controla Parámetros Vacios
     IF (pIdSucursal IS NULL OR pIdSucursal = 0) THEN
-        SELECT 'Debe indicar la Sucursal' Mensaje;
+        SELECT 'Debe indicar la Sucursal.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (plitros IS NULL OR plitros = 0) THEN
+    IF (pLitros IS NULL OR pLitros = 0) THEN
         SELECT 'Debe ingresar los litros de leche.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (pfecha IS NULL) THEN
+    IF (pFecha IS NULL) THEN
         SELECT 'Debe indicar la fecha del registro' Mensaje;
         LEAVE SALIR;
 	END IF;
     -- Controla Parámetros Incorrectos
     IF NOT EXISTS(SELECT IdSucursal FROM Sucursales WHERE IdSucursal = pIdSucursal) THEN
-        SELECT 'La Sucursal seleccionada es inexistente.' Mensaje;
+        SELECT 'La Sucursal indicada no existe.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF EXISTS(SELECT Fecha FROM  RegistrosLeche WHERE  IdSucursal= pIdSucursal and Fecha=pfecha) THEN
-		SELECT 'Ya existe un registro para esa fecha.' Mensaje;
+    IF EXISTS(SELECT Fecha FROM  RegistrosLeche WHERE IdSucursal= pIdSucursal and Fecha = pFecha) THEN
+		SELECT 'Ya existe un registro para la Fecha indicada.' Mensaje;
 		LEAVE SALIR;
 	END IF;
     START TRANSACTION;
         -- Insercion
-        SET pIdregistroleche = (SELECT COALESCE(MAX(IdRegistroLeche), 0)+1 FROM RegistrosLeche);
-        INSERT INTO `RegistrosLeche` VALUES (pIdSucursal,pIdregistroleche,plitros,pfecha);
+        SET pIdRegistroLeche = (SELECT COALESCE(MAX(IdRegistroLeche), 0)+1 FROM RegistrosLeche);
+
+        INSERT INTO RegistrosLeche
+        SELECT pIdSucursal, pIdRegistroLeche, pLitros, pFecha;
+
+        -- Modifico los litros con los que cuenta la sucursal
+        UPDATE  Sucursal
+        SET     Litros = Litros + pLitros
+        WHERE   IdSucursal = pIdSucursal;
+
         SELECT CONCAT ('OK', pIdregistroleche) Mensaje;
 	COMMIT;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ MODIFICAR REGISTRO DE LECHE/----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_modificar_registroleche`; 
 DELIMITER $$
