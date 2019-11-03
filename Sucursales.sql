@@ -193,7 +193,7 @@ SALIR: BEGIN
         SELECT Litros, Fecha
         FROM RegistrosLeche
         WHERE   IdSucursal = pIdSucursal
-        ORDER BY Fecha DESC
+        ORDER BY Fecha ASC
         LIMIT pLimite
     ) tt;
 END$$

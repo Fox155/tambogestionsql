@@ -26,7 +26,7 @@ SALIR: BEGIN
         WHERE   s.IdTambo = pIdTambo
             AND rl.Fecha BETWEEN DATE_SUB(NOW(), INTERVAL 30 DAY) AND NOW()
         GROUP BY rl.Fecha
-        ORDER BY Fecha DESC
+        ORDER BY Fecha ASC
     ) tt;
 END$$
 DELIMITER ;
@@ -48,7 +48,7 @@ SALIR: BEGIN
             AND p.Estado = 'A'
             AND p.Fecha BETWEEN DATE_SUB(NOW(), INTERVAL 30 DAY) AND NOW()
         GROUP BY DATE(p.Fecha)
-        ORDER BY Fecha DESC
+        ORDER BY Fecha ASC
     ) tt;
 END$$
 DELIMITER ;
