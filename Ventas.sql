@@ -26,14 +26,14 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     IF (pMontoPres IS NULL OR pMontoPres <= 0) THEN
-        SELECT 'Debe indicar la moonto presupuestado.' Mensaje;
+        SELECT 'Debe indicar el monto presupuestado.' Mensaje;
         LEAVE SALIR;
 	END IF;
     IF (pNroPagos IS NULL OR pNroPagos <= 0) THEN
         SELECT 'Debe indicar el numero de pagos.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (Litros IS NULL OR Litros <= 0) THEN
+    IF (pLitros IS NULL OR pLitros <= 0) THEN
         SELECT 'Debe indicar los litros de la venta.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -46,7 +46,7 @@ SALIR: BEGIN
         SELECT 'La Sucursal indicada no existe.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF ( (SELECT Leche FROM Sucursales WHERE IdSucursal = pIdSucursal) < pLitros) THEN
+    IF ( (SELECT Litros FROM Sucursales WHERE IdSucursal = pIdSucursal) < pLitros) THEN
 		SELECT 'La Sucursal no cuenta con los litros de leche suficientes.' Mensaje;
 		LEAVE SALIR;
 	END IF;
@@ -63,10 +63,11 @@ SALIR: BEGIN
 	    INSERT INTO Ventas
         SELECT pIdVenta, pIdSucursal, pIdCliente, pMontoPres, 0, pNroPagos, pLitros, NOW(), 'A', pDatos, pObservaciones;
 
-        SELECT CONCAT ('OK', pIdCliente) Mensaje;
+        SELECT CONCAT ('OK', pIdVenta) Mensaje;
 	COMMIT;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ MODIFICAR VENTA/----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_modificar_venta`; 
 DELIMITER $$
@@ -96,14 +97,14 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     IF (pMontoPres IS NULL OR pMontoPres <= 0) THEN
-        SELECT 'Debe indicar la moonto presupuestado.' Mensaje;
+        SELECT 'Debe indicar el monto presupuestado.' Mensaje;
         LEAVE SALIR;
 	END IF;
     IF (pNroPagos IS NULL OR pNroPagos <= 0) THEN
         SELECT 'Debe indicar el numero de pagos.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (Litros IS NULL OR Litros <= 0) THEN
+    IF (pLitros IS NULL OR pLitros <= 0) THEN
         SELECT 'Debe indicar los litros de la venta.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -117,8 +118,9 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     SET pLitrosAntiguos = (SELECT Litros FROM Ventas WHERE IdVenta = pIdVenta);
+    SET pIdSucursal = (SELECT IdSucursal FROM Ventas WHERE IdVenta = pIdVenta);
     IF (pLitrosAntiguos != pLitros) THEN
-        IF ( (SELECT Leche FROM Sucursales WHERE IdSucursal = pIdSucursal) + pLitrosAntiguos < pLitros) THEN
+        IF ( (SELECT Litros FROM Sucursales WHERE IdSucursal = pIdSucursal) + pLitrosAntiguos < pLitros) THEN
             SELECT 'La Sucursal no cuenta con los litros de leche suficientes.' Mensaje;
             LEAVE SALIR;
         END IF;
@@ -140,7 +142,7 @@ SALIR: BEGIN
                 Litros = pLitros,
                 Datos = pDatos,
                 Observaciones = pObservaciones
-		WHERE   IdCliente = pIdCliente;
+		WHERE   IdVenta = pIdVenta;
 
         SELECT 'OK' Mensaje;
 	COMMIT;
@@ -203,7 +205,7 @@ SALIR: BEGIN
     Procedimiento que sirve para instanciar una Venta desde la base de datos.
     */
 	SELECT	v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.IdVenta) Pagos
-    FROM	Ventas
+    FROM	Ventas v
     INNER JOIN Sucursales s USING(IdSucursal)
     INNER JOIN Clientes c USING(IdCliente)
     LEFT JOIN Pagos p USING(IdVenta)
