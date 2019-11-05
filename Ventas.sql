@@ -1,7 +1,7 @@
 -- -----------------------------------------------/ ALTA VENTA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_alta_venta`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_alta_venta`(pIdCliente int, pIdSucursal int, pMontoPres decimal(10,2), pNroPagos tinyint, pLitros decimal(12,2), pDatos json, pObservaciones text)
+CREATE PROCEDURE `tsp_alta_venta`(pIdCliente int, pIdSucursal int, pMontoPres decimal(12,2), pNroPagos tinyint, pLitros decimal(12,2), pDatos json, pObservaciones text)
 SALIR: BEGIN
 	/*
 	Permite dar de alta una nueva Venta, siempre que la sucursal tenga la cantidad necesaria.
@@ -26,14 +26,14 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     IF (pMontoPres IS NULL OR pMontoPres <= 0) THEN
-        SELECT 'Debe indicar la moonto presupuestado.' Mensaje;
+        SELECT 'Debe indicar el monto presupuestado.' Mensaje;
         LEAVE SALIR;
 	END IF;
     IF (pNroPagos IS NULL OR pNroPagos <= 0) THEN
         SELECT 'Debe indicar el numero de pagos.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (Litros IS NULL OR Litros <= 0) THEN
+    IF (pLitros IS NULL OR pLitros <= 0) THEN
         SELECT 'Debe indicar los litros de la venta.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -46,7 +46,7 @@ SALIR: BEGIN
         SELECT 'La Sucursal indicada no existe.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF ( (SELECT Leche FROM Sucursales WHERE IdSucursal = pIdSucursal) < pLitros) THEN
+    IF ( (SELECT Litros FROM Sucursales WHERE IdSucursal = pIdSucursal) < pLitros) THEN
 		SELECT 'La Sucursal no cuenta con los litros de leche suficientes.' Mensaje;
 		LEAVE SALIR;
 	END IF;
@@ -63,22 +63,23 @@ SALIR: BEGIN
 	    INSERT INTO Ventas
         SELECT pIdVenta, pIdSucursal, pIdCliente, pMontoPres, 0, pNroPagos, pLitros, NOW(), 'A', pDatos, pObservaciones;
 
-        SELECT CONCAT ('OK', pIdCliente) Mensaje;
+        SELECT CONCAT ('OK', pIdVenta) Mensaje;
 	COMMIT;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ MODIFICAR VENTA/----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_modificar_venta`; 
 DELIMITER $$
-CREATE PROCEDURE `tsp_modificar_venta`(pIdVenta bigint, pIdCliente int, pMontoPres decimal(10,2), pNroPagos tinyint, pLitros decimal(12,2), pDatos json, pObservaciones text)
+CREATE PROCEDURE `tsp_modificar_venta`(pIdVenta bigint, pIdCliente int, pMontoPres decimal(12,2), pNroPagos tinyint, pLitros decimal(12,2), pDatos json, pObservaciones text)
 SALIR: BEGIN
-/*
+    /*
     Permite modificar los datos de una Venta.
     Devuelve OK o el mensaje de error en Mensaje.
-*/
-DECLARE pMensaje varchar(100);
-DECLARE pIdSucursal int;
-DECLARE pLitrosAntiguos decimal(12,2);
+    */
+    DECLARE pMensaje varchar(100);
+    DECLARE pIdSucursal int;
+    DECLARE pLitrosAntiguos decimal(12,2);
     -- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -96,14 +97,14 @@ DECLARE pLitrosAntiguos decimal(12,2);
         LEAVE SALIR;
 	END IF;
     IF (pMontoPres IS NULL OR pMontoPres <= 0) THEN
-        SELECT 'Debe indicar la moonto presupuestado.' Mensaje;
+        SELECT 'Debe indicar el monto presupuestado.' Mensaje;
         LEAVE SALIR;
 	END IF;
     IF (pNroPagos IS NULL OR pNroPagos <= 0) THEN
         SELECT 'Debe indicar el numero de pagos.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (Litros IS NULL OR Litros <= 0) THEN
+    IF (pLitros IS NULL OR pLitros <= 0) THEN
         SELECT 'Debe indicar los litros de la venta.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -117,8 +118,9 @@ DECLARE pLitrosAntiguos decimal(12,2);
         LEAVE SALIR;
 	END IF;
     SET pLitrosAntiguos = (SELECT Litros FROM Ventas WHERE IdVenta = pIdVenta);
+    SET pIdSucursal = (SELECT IdSucursal FROM Ventas WHERE IdVenta = pIdVenta);
     IF (pLitrosAntiguos != pLitros) THEN
-        IF ( (SELECT Leche FROM Sucursales WHERE IdSucursal = pIdSucursal) + pLitrosAntiguos < pLitros) THEN
+        IF ( (SELECT Litros FROM Sucursales WHERE IdSucursal = pIdSucursal) + pLitrosAntiguos < pLitros) THEN
             SELECT 'La Sucursal no cuenta con los litros de leche suficientes.' Mensaje;
             LEAVE SALIR;
         END IF;
@@ -140,7 +142,7 @@ DECLARE pLitrosAntiguos decimal(12,2);
                 Litros = pLitros,
                 Datos = pDatos,
                 Observaciones = pObservaciones
-		WHERE   IdCliente = pIdCliente;
+		WHERE   IdVenta = pIdVenta;
 
         SELECT 'OK' Mensaje;
 	COMMIT;
@@ -202,8 +204,11 @@ SALIR: BEGIN
 	/*
     Procedimiento que sirve para instanciar una Venta desde la base de datos.
     */
-	SELECT	*
-    FROM	Ventas
+	SELECT	v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.NroPago) Pagos
+    FROM	Ventas v
+    INNER JOIN Sucursales s USING(IdSucursal)
+    INNER JOIN Clientes c USING(IdCliente)
+    LEFT JOIN Pagos p USING(IdVenta)
     WHERE	IdVenta = pIdVenta;
 END$$
 DELIMITER ;
@@ -211,17 +216,39 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR VENTAS /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_ventas`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_ventas`(pIdSucursal int, pCadena varchar(45), pIncluyeBajas char(1))
+CREATE PROCEDURE `tsp_buscar_ventas`(pIdSucursal int, pIdTambo int, pCadena varchar(45), pFechaInicio date, pFechaFin date, pIncluyeBajas char(1))
 SALIR: BEGIN
 	/*
 	Permite buscar Ventas dentro de una sucursal, indicando una cadena de búsqueda.
 	*/
-    SELECT  v.*
-    FROM    Ventas v
-    INNER JOIN ListasPrecio lp
-    WHERE   ( v.Litros LIKE CONCAT('%', pCadena, '%') )
-            AND ( v.IdSucursal = pIdSucursal )
-            AND ( v.Estado = 'A' OR pIncluyeBajas = 'S' );
+    IF (pFechaInicio IS NOT NULL AND pFechaFin IS NOT NULL) THEN
+        SELECT  v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.NroPago) Pagos
+        FROM    Ventas v
+        INNER JOIN Sucursales s USING(IdSucursal)
+        INNER JOIN Clientes c USING(IdCliente)
+        LEFT JOIN Pagos p USING(IdVenta)
+        WHERE   ( v.Litros LIKE CONCAT('%', pCadena, '%') )
+                AND ( c.Apellido LIKE CONCAT('%', pCadena, '%') OR c.Nombre LIKE CONCAT('%', pCadena, '%') OR c.NroDoc LIKE CONCAT('%', pCadena, '%') )
+                AND ( v.IdSucursal = pIdSucursal OR pIdSucursal = 0 )
+                AND ( s.IdTambo = pIdTambo )
+                AND ( v.Estado = 'A' OR pIncluyeBajas = 'S' )
+                AND ( v.Fecha BETWEEN pFechaInicio AND pFechaFin )
+        GROUP BY v.IdVenta
+        ORDER BY v.Fecha DESC;
+    ELSE
+        SELECT  v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.NroPago) Pagos
+        FROM    Ventas v
+        INNER JOIN Sucursales s USING(IdSucursal)
+        INNER JOIN Clientes c USING(IdCliente)
+        LEFT JOIN Pagos p USING(IdVenta)
+        WHERE   ( v.Litros LIKE CONCAT('%', pCadena, '%') )
+                AND ( c.Apellido LIKE CONCAT('%', pCadena, '%') OR c.Nombre LIKE CONCAT('%', pCadena, '%') OR c.NroDoc LIKE CONCAT('%', pCadena, '%') )
+                AND ( v.IdSucursal = pIdSucursal OR pIdSucursal = 0 )
+                AND ( s.IdTambo = pIdTambo )
+                AND ( v.Estado = 'A' OR pIncluyeBajas = 'S' )
+        GROUP BY v.IdVenta
+        ORDER BY v.Fecha DESC;
+    END IF;
 END$$
 DELIMITER ;
 

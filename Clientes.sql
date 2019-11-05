@@ -138,11 +138,13 @@ SALIR: BEGIN
 	/*
     Procedimiento que sirve para instanciar un Cliente desde la base de datos.
     */
-	SELECT	*
-    FROM	Clientes
+	SELECT	c.*, lp.Lista, lp.Precio, CONCAT(c.Apellido, ', ', c.Nombre) NombreCompleto
+    FROM	Clientes c
+    INNER JOIN ListasPrecio lp
     WHERE	IdCliente = pIdCliente;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ BORRAR CLIENTE /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_borrar_cliente` ; 
 DELIMITER $$
@@ -182,6 +184,7 @@ SALIR: BEGIN
 	COMMIT;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ BUSCAR CLIENTE /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_clientes`;
 DELIMITER $$
@@ -190,7 +193,7 @@ SALIR: BEGIN
 	/*
 	Permite buscar Clientes dentro de un tambo , indicando una cadena de búsqueda.
 	*/
-    SELECT  c.*, lp.Lista, lp.Precio   
+    SELECT  c.*, lp.Lista, lp.Precio, CONCAT(c.Apellido, ', ', c.Nombre) NombreCompleto
     FROM    Clientes c
     INNER JOIN ListasPrecio lp
     WHERE   (c.Apellido LIKE CONCAT('%', pCadena, '%')
