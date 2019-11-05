@@ -1,17 +1,16 @@
--- -----------------------------------------------/ ALTA Vaca /----------------------------------------
+-- -----------------------------------------------/ ALTA VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_alta_vaca`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_alta_vaca`(pIdCaravana int, pIdRFID int,pNombre varchar (45),pRaza varchar (45),pPeso smallint, pFechaNac date, pObservaciones text,pIdLote int, pfechaIngresoLote date, pestadoVaca char(15))
+CREATE PROCEDURE `tsp_alta_vaca`(pIdCaravana int, pIdRFID int, pIdLote int, pNombre varchar (45), pRaza varchar (45), pPeso smallint,
+pFechaNac date, pObservaciones text, pFechaIngresoLote date, pEstadoVaca char(15))
 SALIR: BEGIN
 	/*
 	Permite dar de alta una Vaca. Verificando que su idCaravana y IdRFID no esten repetidos en dos vacas que esten activas en un mismo instante
-	A su vez si inserta la vaca en un lote y se le asigna un estado.
+	A su vez se inserta la vaca en un Lote y se le asigna un Estado.
     Devuelve OK+Id o el mensaje de error en Mensaje.
 	*/
     DECLARE pMensaje varchar(100);
     DECLARE pIdVaca int;
-    DECLARE pnroEstadoVaca int;
-    DECLARE pnroVacaLote int;
     	-- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -21,67 +20,82 @@ SALIR: BEGIN
 	END;
     -- Controla Parámetros Vacios
     IF (pIdCaravana IS NULL OR pIdCaravana = 0) THEN
-        SELECT 'Debe indicar el IdCaravana' Mensaje;
+        SELECT 'Debe indicar la Caravana.' Mensaje;
         LEAVE SALIR;
 	END IF;
     IF (pIdRFID IS NULL OR pIdRFID = 0) THEN
-        SELECT 'Debe indicar el IdRFID' Mensaje;
+        SELECT 'Debe indicar el Identificador de Radio Frecuencia(RFID).' Mensaje;
         LEAVE SALIR;
 	END IF;
      IF (pIdLote IS NULL OR pIdLote = 0) THEN
-        SELECT 'Debe indicar el IdLote' Mensaje;
+        SELECT 'Debe indicar el Lote.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (pfechaIngresoLote IS NULL) THEN
-        SELECT 'Debe indicar la fecha de ingreso al lote' Mensaje;
+    IF (pFechaIngresoLote IS NULL) THEN
+        SELECT 'Debe indicar la Fecha de ingreso al lote.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (pestadoVaca IS NULL OR pestadoVaca = '') THEN
-        SELECT 'Debe ingresar el estado de la vaca' Mensaje;
+    IF (pEstadoVaca IS NULL OR pEstadoVaca = '') THEN
+        SELECT 'Debe ingresar el Estado incial.' Mensaje;
         LEAVE SALIR;
 	END IF;
     -- Controla Parámetros Incorrectos    
-    IF (EXISTS(SELECT v.IdCaravana FROM Vacas v INNER JOIN EstadosVacas ev USING (IdVaca) WHERE v.IdCaravana = pIdCaravana AND (ev.Estado <> 'VENDIDA' OR ev.Estado <> 'MUERTA'))) THEN
-        SELECT 'IdCaravana repetido.' Mensaje; -- Falta comparar si son iguales en una misma fecha
+    IF EXISTS(  
+        SELECT v.IdCaravana FROM Vacas v
+        INNER JOIN EstadosVacas ev USING (IdVaca)
+        WHERE   v.IdCaravana = pIdCaravana
+                AND (ev.Estado <> 'Vendida' AND ev.Estado <> 'Muerta')
+                AND ev.FechaFin IS NULL) THEN
+        SELECT 'Caravana repetida.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (EXISTS(SELECT v.IdRFID FROM Vacas v INNER JOIN EstadosVacas ev USING (IdVaca)WHERE IdRFID = pIdRFID AND (ev.Estado <> 'VENDIDA' OR ev.Estado <> 'MUERTA'))) THEN
-        SELECT 'IdRFID repetido.' Mensaje; -- Falta comparar si son iguales en una misma fecha
+    IF EXISTS(
+        SELECT v.IdRFID FROM Vacas v 
+        INNER JOIN EstadosVacas ev USING (IdVaca)
+        WHERE   IdRFID = pIdRFID 
+                AND (ev.Estado <> 'Vendida' AND ev.Estado <> 'Muerta')
+                AND ev.FechaFin IS NULL) THEN
+        SELECT 'Identificador de Radio Frecuencia(RFID) repetido.' Mensaje; -- Falta comparar si son iguales en una misma fecha
         LEAVE SALIR;
 	END IF;
-    IF (pfechaIngresoLote<pFechaNac) THEN
-        SELECT 'Debe ingresar una fecha mayor a la fecha de Nacimiento ' Mensaje;
+    IF ( pFechaIngresoLote < pFechaNac) THEN
+        SELECT 'La Fecha de ingreso al Lote debe ser mayor que la de Nacimiento.' Mensaje;
         LEAVE SALIR;
+	END IF;
+    IF ( pPeso IS NOT NULL AND pPeso <= 0) THEN
+        SET pPeso = NULL;
 	END IF;
     START TRANSACTION;
-    -- Insercion en vacas
-    SET pIdVaca = (SELECT COALESCE(MAX(IdVaca), 0)+1 FROM Vacas);
-	INSERT INTO `Vacas` VALUES (pIdVaca,pIdCaravana,pIdRFID,pNombre,pRaza,pPeso,pFechaNac,pObservaciones);
-    
-    -- Insercion en VacasLote
-    SET pnroVacaLote = (SELECT COALESCE(MAX(NroVacaLote), 0)+1 FROM VacasLote);
-    INSERT INTO `VacasLote` VALUES (pIdVaca,pIdLote,pnroVacaLote,pfechaIngresoLote,null);
+        -- Insercion en Vacas
+        SET pIdVaca = (SELECT COALESCE(MAX(IdVaca), 0)+1 FROM Vacas);
+        INSERT INTO Vacas
+        SELECT pIdVaca, pIdCaravana, pIdRFID, pNombre, pRaza, pPeso, pFechaNac, pObservaciones;
+        
+        -- Insercion en VacasLote
+        INSERT INTO VacasLote 
+        SELECT pIdVaca, pIdLote, 1, pFechaIngresoLote, NULL;
 
-    -- Insercion en EstadoVaca
-        -- Consideramos la fecha del inicio del estado la misma que la fecha de nacimiento
-    SET pnroEstadoVaca = (SELECT COALESCE(MAX(NroEstadoVaca), 0)+1 FROM EstadosVacas);
-    INSERT INTO `EstadosVacas` VALUES (pIdVaca,pnroEstadoVaca,pestadoVaca,pFechaNac,null);
-    
-    SELECT CONCAT ('OK',pIdVaca) Mensaje;
+        -- Insercion en EstadoVaca
+        INSERT INTO EstadosVacas
+        SELECT pIdVaca, 1, pEstadoVaca, pFechaNac, NULL;
+        
+        SELECT CONCAT ('OK',pIdVaca) Mensaje;
 	COMMIT;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ MODIFICAR VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_modificar_vaca`; 
 DELIMITER $$
-CREATE PROCEDURE `tsp_modificar_vaca`(pIdVaca int, pIdCaravana int, pIdRFID int,pNombre varchar (45),pRaza varchar (45),pPeso tinyint, pFechaNac date, pObservaciones text)
+CREATE PROCEDURE `tsp_modificar_vaca`(pIdVaca int, pIdCaravana int, pIdRFID int, pNombre varchar (45), pRaza varchar (45),
+pPeso smallint, pFechaNac date, pObservaciones text)
 SALIR: BEGIN
-/*
-	Permite modificar los datos de una vaca. El IdCarava, IdRFIDVaca podran ser modificados si no hay otra vaca con los mismos datos en una misma fecha.
-    Devuelve OK o el mensaje de error en Mensaje.
-*/
-DECLARE pMensaje varchar(100);
--- Manejo de error en la transacción
+    /*
+        Permite modificar los datos de una vaca. El IdCarava, IdRFID podran ser modificados si no hay otra vaca con los mismos datos en una misma fecha.
+        Devuelve OK o el mensaje de error en Mensaje.
+    */
+    DECLARE pMensaje varchar(100);
+    -- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
 		-- SHOW ERRORS;
@@ -90,54 +104,56 @@ DECLARE pMensaje varchar(100);
 	END;
     -- Controla Parámetros Vacios
     IF (pIdVaca IS NULL OR pIdVaca = 0) THEN
-        SELECT 'Debe indicar el Idvaca' Mensaje;
+        SELECT 'Debe indicar la Vaca.' Mensaje;
         LEAVE SALIR;
 	END IF;
     IF (pIdCaravana IS NULL OR pIdCaravana = 0) THEN
-        SELECT 'Debe indicar el IdCaravana' Mensaje;
+        SELECT 'Debe indicar la Caravana.' Mensaje;
         LEAVE SALIR;
 	END IF;
     IF (pIdRFID IS NULL OR pIdRFID = 0) THEN
-        SELECT 'Debe indicar el IdRFID' Mensaje;
+        SELECT 'Debe indicar el Identificador de Radio Frecuencia(RFID).' Mensaje;
         LEAVE SALIR;
 	END IF;
      -- Controla Parámetros Incorrectos    
-    IF (EXISTS(SELECT v.IdCaravana FROM Vacas v INNER JOIN EstadosVacas ev USING (IdVaca) WHERE v.IdVaca!= pIdVaca AND v.IdCaravana = pIdCaravana AND (ev.Estado <> 'VENDIDA' OR ev.Estado <> 'MUERTA'))) THEN
-        SELECT 'IdCaravana repetido.' Mensaje; 
+    IF EXISTS(  
+        SELECT v.IdCaravana FROM Vacas v
+        INNER JOIN EstadosVacas ev USING (IdVaca)
+        WHERE   v.IdCaravana = pIdCaravana
+                AND (ev.Estado <> 'Vendida' AND ev.Estado <> 'Muerta')
+                AND ev.FechaFin IS NULL) THEN
+        SELECT 'Caravana repetida.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (EXISTS(SELECT v.IdRFID FROM Vacas v INNER JOIN EstadosVacas ev USING (IdVaca)WHERE v.IdVaca!= pIdVaca AND  IdRFID = pIdRFID AND (ev.Estado <> 'VENDIDA' OR ev.Estado <> 'MUERTA'))) THEN
-        SELECT 'IdCaravana repetido.' Mensaje; 
+    IF EXISTS(
+        SELECT v.IdRFID FROM Vacas v 
+        INNER JOIN EstadosVacas ev USING (IdVaca)
+        WHERE   IdRFID = pIdRFID 
+                AND (ev.Estado <> 'Vendida' AND ev.Estado <> 'Muerta')
+                AND ev.FechaFin IS NULL) THEN
+        SELECT 'Identificador de Radio Frecuencia(RFID) repetido.' Mensaje; -- Falta comparar si son iguales en una misma fecha
         LEAVE SALIR;
 	END IF;
-    START TRANSACTION;  
-			UPDATE Vacas
-            SET IdCaravana = pIdCaravana,
-                IdRFID =pIdRFID,
-                Nombre = pNombre,
-                Raza = pRaza,
-                Peso = pPeso,
-                FechaNac = pFechaNac,
-                Observaciones = pObservaciones
-            WHERE IdVaca = pIdVaca;
-            SELECT 'OK' Mensaje;
+    IF ( pPeso IS NOT NULL AND pPeso <= 0) THEN
+        SET pPeso = NULL;
+	END IF;
+    START TRANSACTION; 
+        -- Modifaca
+        UPDATE Vacas
+        SET IdCaravana = pIdCaravana,
+            IdRFID = pIdRFID,
+            Nombre = pNombre,
+            Raza = pRaza,
+            Peso = pPeso,
+            FechaNac = pFechaNac,
+            Observaciones = pObservaciones
+        WHERE IdVaca = pIdVaca;
+
+        SELECT 'OK' Mensaje;
 	COMMIT;
 END$$
 DELIMITER ;
 
--- -----------------------------------------------/ DAME Vaca /----------------------------------------
-DROP PROCEDURE IF EXISTS `tsp_dame_vaca`;
-DELIMITER $$
-CREATE PROCEDURE `tsp_dame_vaca`(pIdVaca int)
-SALIR: BEGIN
- 	/*
-    Procedimiento que sirve para instanciar una Vaca desde la base de datos.
-    */
-	SELECT	*
-    FROM	Vacas
-    WHERE	IdVaca = pIdVaca;
-END$$
-DELIMITER ;
 -- -----------------------------------------------/ BORRAR VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_borrar_vaca` ; 
 DELIMITER $$
@@ -151,24 +167,22 @@ SALIR: BEGIN
 	-- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-		 SHOW ERRORS;
+		-- SHOW ERRORS;
 		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
         ROLLBACK;
 	END;
     -- Control de Parametros Incorrectos
-    IF NOT EXISTS(SELECT IdVaca FROM Vacas WHERE IdVaca = pIdVaca) THEN
-        SELECT 'La Vaca deseada no existe.' Mensaje;
-        LEAVE SALIR;
-	END IF;
     IF EXISTS (SELECT pIdVaca FROM Lactancias WHERE IdVaca = pIdVaca) THEN
-        SELECT 'La Vaca indicada no se puede borrar, tiene lactancias asociados.' Mensaje;
+        SELECT 'La Vaca indicada no se puede borrar, tiene lactancias asociadas.' Mensaje;
         LEAVE SALIR;
 	END IF;   
     START TRANSACTION;
         -- Borra los estados de esa vaca
         DELETE FROM EstadosVacas WHERE IdVaca = pIdVaca;
+
         -- Borra los lotes asociados a esa vaca
         DELETE FROM VacasLote WHERE IdVaca = pIdVaca;
+
          -- Borra la vaca
         DELETE FROM Vacas WHERE IdVaca = pIdVaca;
         
@@ -176,6 +190,25 @@ SALIR: BEGIN
 	COMMIT;
 END$$
 DELIMITER ;
+
+-- -----------------------------------------------/ DAME VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_dame_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_dame_vaca`(pIdVaca int)
+SALIR: BEGIN
+ 	/*
+    Procedimiento que sirve para instanciar una Vaca desde la base de datos.
+    */
+    SELECT  v.*, l.IdLote, l.Nombre Lote, s.IdSucursal, s.Nombre Sucursal, ev.Estado
+    FROM    Vacas v 
+    INNER JOIN EstadosVacas ev USING (IdVaca)
+    INNER JOIN VacasLote vl USING (IdVaca)
+    INNER JOIN Lotes l USING(IdLote)
+    INNER JOIN Sucursales s USING(IdSucursal)
+    WHERE	IdVaca = pIdVaca AND ev.FechaFin IS NULL;
+END$$
+DELIMITER ;
+
 -- -----------------------------------------------/ BUSCAR  VACAS /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_vacas`;
 DELIMITER $$
@@ -251,8 +284,117 @@ SALIR: BEGIN
         INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
         INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
         WHERE   v.IdVaca = pIdVaca
-            AND l.FechaFin IS NULL
+                AND l.FechaFin IS NULL
         ORDER BY Fecha DESC
     ) tt;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ CAMBIAR ESTADO VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_cambiar_estado_vaca`; 
+DELIMITER $$
+CREATE PROCEDURE `tsp_cambiar_estado_vaca`(pIdVaca int, pEstado varchar(15))
+SALIR: BEGIN
+    /*
+        Permite cambiar el estado de una vaca finalidanzo el anterior, siempre que no se encuentre
+        'Vendida' o 'Muerta'.
+        Devuelve OK o el mensaje de error en Mensaje.
+    */
+    DECLARE pMensaje varchar(100);
+    DECLARE pNroEstadoVaca int;
+    DECLARE pFechaFin date;
+    -- Manejo de error en la transacción
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+		-- SHOW ERRORS;
+		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
+        ROLLBACK;
+	END;
+    -- Controla Parámetros Vacios
+    IF (pIdVaca IS NULL OR pIdVaca = 0) THEN
+        SELECT 'Debe indicar la Vaca.' Mensaje;
+        LEAVE SALIR;
+	END IF;
+    IF (pEstado IS NULL OR pEstado = '') THEN
+        SELECT 'Debe indicar la Estado.' Mensaje;
+        LEAVE SALIR;
+	END IF;
+     -- Controla Parámetros Incorrectos    
+    IF EXISTS(  
+        SELECT v.IdVaca FROM Vacas v
+        INNER JOIN EstadosVacas ev USING (IdVaca)
+        WHERE   v.IdVaca = pIdVaca
+                AND (ev.Estado <> 'Vendida' AND ev.Estado <> 'Muerta')
+                AND ev.FechaFin IS NULL) THEN
+        SELECT 'La Vaca se encuentra Vendida o Muerta, no puede cambiar de estado.' Mensaje;
+        LEAVE SALIR;
+	END IF;
+    START TRANSACTION;
+        SET pFechaFin = NULL;
+
+        -- IF (pEstado = 'Vendida' OR pEstado = 'Muerta') THEN
+        --     SET pFechaFin = NOW();
+        -- END IF;
+
+        -- Modifaca
+        UPDATE EstadosVacas
+        SET FechaFin = NOW()
+        WHERE IdVaca = pIdVaca AND FechaFin IS NULL;
+
+        SET pNroEstadoVaca = (SELECT COALESCE(MAX(NroEstadoVaca), 0)+1 FROM EstadosVacas WHERE IdVaca = pIdVaca);
+        INSERT INTO EstadosVacas
+        SELECT pIdVaca, pNroEstadoVaca, pEstado, NOW(), pFechaFin;
+
+        SELECT 'OK' Mensaje;
+	COMMIT;
+END$$
+DELIMITER ;
+
+
+-- -----------------------------------------------/ CAMBIAR LOTE VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_cambiar_lote_vaca`; 
+DELIMITER $$
+CREATE PROCEDURE `tsp_cambiar_lote_vaca`(pIdVaca int, pIdLote int)
+SALIR: BEGIN
+    /*
+        Permite cambiar el lote de una vaca finalidanzo el anterior, siempre que el lote solo este Activo.
+        Devuelve OK o el mensaje de error en Mensaje.
+    */
+    DECLARE pMensaje varchar(100);
+    DECLARE pNroVacaLote int;
+    DECLARE pFechaFin date;
+    -- Manejo de error en la transacción
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+		-- SHOW ERRORS;
+		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
+        ROLLBACK;
+	END;
+    -- Controla Parámetros Vacios
+    IF (pIdVaca IS NULL OR pIdVaca = 0) THEN
+        SELECT 'Debe indicar la Vaca.' Mensaje;
+        LEAVE SALIR;
+	END IF;
+    IF (pIdLote IS NULL OR pIdLote = 0) THEN
+        SELECT 'Debe indicar el Lote.' Mensaje;
+        LEAVE SALIR;
+	END IF;
+     -- Controla Parámetros Incorrectos    
+    IF NOT EXISTS( SELECT IdLote FROM Lotes WHERE IdLote = pIdLote AND Estado = 'A' ) THEN
+        SELECT 'El Lote indicado no es valido.' Mensaje;
+        LEAVE SALIR;
+	END IF;
+    START TRANSACTION;
+        -- Modifaca
+        UPDATE VacasLote
+        SET FechaFin = NOW()
+        WHERE IdVaca = pIdVaca AND FechaFin IS NULL;
+
+        SET pNroVacaLote = (SELECT COALESCE(MAX(NroVacaLote), 0)+1 FROM VacasLote WHERE IdVaca = pIdVaca);
+        INSERT INTO VacasLote
+        SELECT pIdVaca, pNroVacaLote, NOW(), NULL;
+
+        SELECT 'OK' Mensaje;
+	COMMIT;
 END$$
 DELIMITER ;

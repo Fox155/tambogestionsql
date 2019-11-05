@@ -204,7 +204,7 @@ SALIR: BEGIN
 	/*
     Procedimiento que sirve para instanciar una Venta desde la base de datos.
     */
-	SELECT	v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.IdVenta) Pagos
+	SELECT	v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.NroPago) Pagos
     FROM	Ventas v
     INNER JOIN Sucursales s USING(IdSucursal)
     INNER JOIN Clientes c USING(IdCliente)
@@ -222,7 +222,7 @@ SALIR: BEGIN
 	Permite buscar Ventas dentro de una sucursal, indicando una cadena de búsqueda.
 	*/
     IF (pFechaInicio IS NOT NULL AND pFechaFin IS NOT NULL) THEN
-        SELECT  v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COALESCE((p.IdVenta),0) Pagos
+        SELECT  v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.NroPago) Pagos
         FROM    Ventas v
         INNER JOIN Sucursales s USING(IdSucursal)
         INNER JOIN Clientes c USING(IdCliente)
@@ -233,9 +233,10 @@ SALIR: BEGIN
                 AND ( s.IdTambo = pIdTambo )
                 AND ( v.Estado = 'A' OR pIncluyeBajas = 'S' )
                 AND ( v.Fecha BETWEEN pFechaInicio AND pFechaFin )
+        GROUP BY v.IdVenta
         ORDER BY v.Fecha DESC;
     ELSE
-        SELECT  v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COALESCE((p.IdVenta),0) Pagos
+        SELECT  v.*, s.Nombre Sucursal, CONCAT(c.Apellido, ', ', c.Nombre) Cliente, COUNT(p.NroPago) Pagos
         FROM    Ventas v
         INNER JOIN Sucursales s USING(IdSucursal)
         INNER JOIN Clientes c USING(IdCliente)
@@ -245,6 +246,7 @@ SALIR: BEGIN
                 AND ( v.IdSucursal = pIdSucursal OR pIdSucursal = 0 )
                 AND ( s.IdTambo = pIdTambo )
                 AND ( v.Estado = 'A' OR pIncluyeBajas = 'S' )
+        GROUP BY v.IdVenta
         ORDER BY v.Fecha DESC;
     END IF;
 END$$
