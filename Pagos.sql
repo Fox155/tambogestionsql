@@ -38,13 +38,13 @@ SALIR: BEGIN
         SELECT 'La Venta indicada no es valida.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF ( (SELECT COALESCE(MAX(IdVenta), 0) + 1 FROM Ventas) > (SELECT NroPagos FROM Ventas WHERE IdVenta = pIdVenta) ) THEN
+    IF ( (SELECT COALESCE(MAX(NroPago), 0) + 1 FROM Pagos WHERE IdVenta = pIdVenta) > (SELECT NroPagos FROM Ventas WHERE IdVenta = pIdVenta) ) THEN
 		SELECT 'Ya se alcanzo el numero de Pagos.' Mensaje;
 		LEAVE SALIR;
 	END IF;
 
     START TRANSACTION;
-        SET pNroPago = (SELECT COALESCE(MAX(NroPago), 0)+1 FROM Ventas);
+        SET pNroPago = (SELECT COALESCE(MAX(NroPago), 0)+1 FROM Pagos WHERE IdVenta = pIdVenta);
 
         -- Modifico en monto pagado de la venta
         UPDATE  Ventas
