@@ -212,7 +212,7 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR  VACAS /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_vacas`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_vacas`(pIdSucursal int, pIdLote int, pCadena varchar(100),pIncluyeBajas char(1))
+CREATE PROCEDURE `tsp_buscar_vacas`(pIdSucursal int, pIdLote int, pCadena varchar(100), pIncluyeBajas char(1), pIncluyeVendidas char(1))
 SALIR: BEGIN
 	/*
 	Permite buscar Vacas dentro de los lotes de una Sucursal, indicando una cadena de búsqueda.  
@@ -230,7 +230,9 @@ SALIR: BEGIN
                 OR v.IdRFID LIKE CONCAT('%', pCadena, '%')
                 OR ev.Estado LIKE CONCAT('%', pCadena, '%'))
             AND (pIncluyeBajas = 'S'  OR ev.Estado <> 'BAJA')
-            AND (ev.FechaInicio <= NOW() AND ev.FechaFin IS NULL);
+            AND (pIncluyeVendidas = 'S'  OR (ev.Estado <> 'VENDIDA' AND ev.Estado <> 'MUERTA'))
+            AND (ev.FechaFin IS NULL)
+            AND (vl.FechaEgreso IS NULL);
 END$$
 DELIMITER ;
 
@@ -375,15 +377,15 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
      -- Controla Parámetros Incorrectos    
-    IF EXISTS(  
-        SELECT v.IdVaca FROM Vacas v
-        INNER JOIN EstadosVacas ev USING (IdVaca)
-        WHERE   v.IdVaca = pIdVaca
-                AND (ev.Estado <> 'Vendida' AND ev.Estado <> 'Muerta')
-                AND ev.FechaFin IS NULL) THEN
-        SELECT 'La Vaca se encuentra Vendida o Muerta, no puede cambiar de estado.' Mensaje;
-        LEAVE SALIR;
-	END IF;
+    -- IF EXISTS(  
+    --     SELECT v.IdVaca FROM Vacas v
+    --     INNER JOIN EstadosVacas ev USING (IdVaca)
+    --     WHERE   v.IdVaca = pIdVaca
+    --             AND (ev.Estado = 'Vendida' OR ev.Estado = 'Muerta')
+    --             AND ev.FechaFin IS NULL) THEN
+    --     SELECT 'La Vaca se encuentra Vendida o Muerta, no puede cambiar de estado.' Mensaje;
+    --     LEAVE SALIR;
+	-- END IF;
     START TRANSACTION;
         SET pFechaFin = NULL;
 
@@ -416,6 +418,7 @@ SALIR: BEGIN
         Devuelve OK o el mensaje de error en Mensaje.
     */
     DECLARE pMensaje varchar(100);
+    DECLARE pIdLoteAntiguo int;
     DECLARE pNroVacaLote int;
     DECLARE pFechaFin date;
     -- Manejo de error en la transacción
@@ -440,14 +443,18 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     START TRANSACTION;
-        -- Modifaca
-        UPDATE VacasLote
-        SET FechaFin = NOW()
-        WHERE IdVaca = pIdVaca AND FechaFin IS NULL;
+        SET pIdLoteAntiguo = (SELECT IdLote FROM VacasLote WHERE IdVaca = pIdVaca AND FechaEgreso IS NULL);
 
-        SET pNroVacaLote = (SELECT COALESCE(MAX(NroVacaLote), 0)+1 FROM VacasLote WHERE IdVaca = pIdVaca);
-        INSERT INTO VacasLote
-        SELECT pIdVaca, pNroVacaLote, NOW(), NULL;
+        IF(pIdLoteAntiguo != pIdLote) THEN
+            -- Modifica
+            UPDATE VacasLote
+            SET FechaEgreso = NOW()
+            WHERE IdVaca = pIdVaca AND FechaEgreso IS NULL;
+
+            SET pNroVacaLote = (SELECT COALESCE(MAX(NroVacaLote), 0)+1 FROM VacasLote WHERE IdVaca = pIdVaca AND IdLote = pIdLote);
+            INSERT INTO VacasLote
+            SELECT pIdVaca, pIdLote, pNroVacaLote, NOW(), NULL;
+        END IF;
 
         SELECT 'OK' Mensaje;
 	COMMIT;

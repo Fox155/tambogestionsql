@@ -144,6 +144,7 @@ SALIR: BEGIN
 	COMMIT;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ BUSCAR  LOTES /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_lotes`;
 DELIMITER $$
@@ -153,12 +154,16 @@ SALIR: BEGIN
 	Permite buscar Lotes dentro de una Sucursal , indicando una cadena de búsqueda.
     Si pIdSucursal = 0 lista para todos los Lotes de todas las sucursales.
 	*/
-    SELECT  s.Nombre Sucursal,COUNT(vl.IdVaca) AS Ganado , l.*
+    SELECT  s.Nombre Sucursal,COUNT(vl.IdVaca) AS Ganado , l.*, CONCAT(l.Nombre, ' - ', s.Nombre) LoteSucursal
     FROM    Lotes l
     INNER JOIN VacasLote vl on vl.IdLote = l.IdLote
     INNER JOIN Sucursales s USING(IdSucursal)
+    INNER JOIN Vacas v ON vl.IdVaca = v.IdVaca
+    INNER JOIN EstadosVacas ev ON ev.IdVaca = v.IdVaca
     WHERE   l.Nombre LIKE CONCAT('%', pCadena, '%')
             AND vl.FechaEgreso IS NULL
+            AND ev.FechaFin IS NULL
+            AND (ev.Estado <> 'VENDIDA' AND ev.Estado <> 'MUERTA' AND ev.Estado <> 'BAJA')
             AND (IdTambo = pIdTambo)
             AND (IdSucursal = pIdSucursal OR pIdSucursal = 0)
             AND (pIncluyeBajas = 'S'  OR l.Estado = 'A')
