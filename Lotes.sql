@@ -249,3 +249,43 @@ DECLARE pMensaje varchar(100);
 	COMMIT;
 END$$
 DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR RESUMEN PRODUCCIONES LOTE /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_resumen_producciones_lote`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_resumen_producciones_lote`(pIdLote int, pFechaInicio date, pFechaFin date)
+SALIR: BEGIN
+	/*
+	Permite listar las producciones de la ultima lactancia de una Vaca, en funcion de sus sesiones de ordeñe. 
+	*/
+    IF (pFechaInicio IS NOT NULL AND pFechaFin IS NOT NULL) THEN
+        SELECT  JSON_ARRAYAGG(tt.Producciones) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+        FROM (
+            SELECT SUM(p.Produccion) Producciones, DATE_FORMAT(so.Fecha, '%d de %M %Y') Fecha
+            FROM Producciones p
+            INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+            INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+            INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+            INNER JOIN VacasLote vl ON vl.IdVaca = v.IdVaca
+            WHERE   vl.IdLote = pIdLote
+                    AND so.Fecha BETWEEN pFechaInicio AND pFechaFin
+            GROUP BY so.Fecha
+            ORDER BY so.Fecha ASC
+        ) tt;
+    ELSE
+        SELECT  JSON_ARRAYAGG(tt.Producciones) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+        FROM (
+            SELECT SUM(p.Produccion) Producciones, DATE_FORMAT(so.Fecha, '%d de %M %Y') Fecha
+            FROM Producciones p
+            INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+            INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+            INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+            INNER JOIN VacasLote vl ON vl.IdVaca = v.IdVaca
+            WHERE   vl.IdLote = pIdLote
+                    AND so.Fecha BETWEEN DATE_SUB(NOW(), INTERVAL 30 DAY) AND NOW()
+            GROUP BY so.Fecha
+            ORDER BY so.Fecha ASC
+        ) tt;
+    END IF;
+END$$
+DELIMITER ;

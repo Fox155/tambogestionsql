@@ -242,11 +242,44 @@ SALIR: BEGIN
 	/*
 	Permite listar las lactancias una Vaca. 
 	*/
-    SELECT  l.*
+    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada, SUM(p.Produccion) Corregida,
+    TIMESTAMPDIFF(MONTH, v.FechaNac,NOW()) Meses, TIMESTAMPDIFF(DAY, l.FechaInicio ,NOW()) Dias
     FROM Lactancias l
     INNER JOIN Vacas v USING(IdVaca)
+    INNER JOIN Producciones p ON l.IdVaca = p.IdVaca AND l.NroLactancia = p.NroLactancia
     WHERE v.IdVaca = pIdVaca
-    ORDER BY l.NroLactancia;
+    ORDER BY l.NroLactancia DESC;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR RESUMENES COMPLETOS LACTANCIAS VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_resumen_completo_lactancias_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_resumen_completo_lactancias_vaca`(pIdVaca int)
+SALIR: BEGIN
+	/*
+	Permite listar las lactancias una Vaca. 
+	*/
+    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada,
+    TIMESTAMPDIFF(MONTH, v.FechaNac,NOW()) Meses, TIMESTAMPDIFF(DAY, l.FechaInicio ,NOW()) Dias,
+    st.Datos 'Data', st.Etiquetas 'Labels'
+    FROM (
+        SELECT  JSON_ARRAYAGG(tt.Produccion) Datos, JSON_ARRAYAGG(tt.Fecha) Etiquetas
+        FROM (
+            SELECT p.Produccion, so.Fecha
+            FROM Producciones p
+            INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+            INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+            INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+            WHERE   v.IdVaca = pIdVaca
+            ORDER BY Fecha DESC
+        ) tt
+    ) st
+    ,Lactancias l
+    INNER JOIN Vacas v USING(IdVaca)
+    INNER JOIN Producciones p ON l.IdVaca = p.IdVaca AND l.NroLactancia = p.NroLactancia
+    WHERE v.IdVaca = pIdVaca
+    ORDER BY l.NroLactancia DESC;
 END$$
 DELIMITER ;
 
@@ -285,6 +318,28 @@ SALIR: BEGIN
         INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
         WHERE   v.IdVaca = pIdVaca
                 AND l.FechaFin IS NULL
+        ORDER BY Fecha DESC
+    ) tt;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR RESUMEN PRODUCCIONES VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_resumen_producciones_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_resumen_producciones_vaca`(pIdVaca int, pNroLactancia tinyint)
+SALIR: BEGIN
+	/*
+	Permite listar las producciones de la ultima lactancia de una Vaca, en funcion de sus sesiones de ordeñe. 
+	*/
+    SELECT  JSON_ARRAYAGG(tt.Produccion) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+    FROM (
+        SELECT p.Produccion, so.Fecha
+        FROM Producciones p
+        INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+        INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+        INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+        WHERE   l.IdVaca = pIdVaca
+                AND l.NroLactancia = pNroLactancia
         ORDER BY Fecha DESC
     ) tt;
 END$$
