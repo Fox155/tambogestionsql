@@ -53,7 +53,7 @@ SALIR: BEGIN
 
         -- Alta Pago
 	    INSERT INTO Pagos
-        SELECT pIdVenta, pNroPago, pTipoComp, pNroComp, pMonto, NOW(), 'A';
+        SELECT pIdVenta, pNroPago, pTipoComp, pNroComp, pMonto, NOW();
 
         SELECT CONCAT ('OK', pNroPago) Mensaje;
 	COMMIT;
@@ -96,7 +96,7 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     -- Control de Parámetros incorrectos
-    IF NOT EXISTS(SELECT IdVenta, NroPago FROM Pagos WHERE IdVenta = pIdVenta AND NroPago = pNroPago AND Estado = 'A') THEN
+    IF NOT EXISTS(SELECT IdVenta, NroPago FROM Pagos WHERE IdVenta = pIdVenta AND NroPago = pNroPago) THEN
         SELECT 'El Pago indicado no es valido.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -145,7 +145,7 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     -- Control de Parámetros incorrectos
-    IF NOT EXISTS(SELECT IdVenta, NroPago FROM Pagos WHERE IdVenta = pIdVenta AND NroPago = pNroPago AND Estado = 'A') THEN
+    IF NOT EXISTS(SELECT IdVenta, NroPago FROM Pagos WHERE IdVenta = pIdVenta AND NroPago = pNroPago) THEN
         SELECT 'El Pago indicado no es valido.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -182,7 +182,7 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR PAGOS /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_pagos`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_pagos`(pIdVenta bigint, pFechaInicio date, pFechaFin date, pIncluyeBajas char(1))
+CREATE PROCEDURE `tsp_buscar_pagos`(pIdVenta bigint, pFechaInicio date, pFechaFin date)
 SALIR: BEGIN
 	/*
 	Permite buscar Pagos de una venta, pudiendo filtrar por fecha.
@@ -191,14 +191,12 @@ SALIR: BEGIN
         SELECT	p.*
         FROM	Pagos p
         WHERE   (p.IdVenta = pIdVenta)
-                AND ( p.Estado = 'A' OR pIncluyeBajas = 'S' )
                 AND ( p.Fecha BETWEEN pFechaInicio AND pFechaFin )
         ORDER BY p.Fecha DESC;
     ELSE
         SELECT	p.*
         FROM	Pagos p
         WHERE   (p.IdVenta = pIdVenta)
-                AND ( p.Estado = 'A' OR pIncluyeBajas = 'S' )
         ORDER BY p.Fecha DESC;
     END IF;
 END$$

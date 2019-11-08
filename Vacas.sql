@@ -212,7 +212,7 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR  VACAS /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_vacas`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_vacas`(pIdSucursal int, pIdLote int, pCadena varchar(100),pIncluyeBajas char(1))
+CREATE PROCEDURE `tsp_buscar_vacas`(pIdSucursal int, pIdLote int, pCadena varchar(100), pIncluyeBajas char(1), pIncluyeVendidas char(1))
 SALIR: BEGIN
 	/*
 	Permite buscar Vacas dentro de los lotes de una Sucursal, indicando una cadena de búsqueda.  
@@ -230,7 +230,9 @@ SALIR: BEGIN
                 OR v.IdRFID LIKE CONCAT('%', pCadena, '%')
                 OR ev.Estado LIKE CONCAT('%', pCadena, '%'))
             AND (pIncluyeBajas = 'S'  OR ev.Estado <> 'BAJA')
-            AND (ev.FechaInicio <= NOW() AND ev.FechaFin IS NULL);
+            AND (pIncluyeVendidas = 'S'  OR (ev.Estado <> 'VENDIDA' AND ev.Estado <> 'MUERTA'))
+            AND (ev.FechaFin IS NULL)
+            AND (vl.FechaEgreso IS NULL);
 END$$
 DELIMITER ;
 
@@ -242,11 +244,44 @@ SALIR: BEGIN
 	/*
 	Permite listar las lactancias una Vaca. 
 	*/
-    SELECT  l.*
+    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada, SUM(p.Produccion) Corregida,
+    TIMESTAMPDIFF(MONTH, v.FechaNac,NOW()) Meses, TIMESTAMPDIFF(DAY, l.FechaInicio ,NOW()) Dias
     FROM Lactancias l
     INNER JOIN Vacas v USING(IdVaca)
+    INNER JOIN Producciones p ON l.IdVaca = p.IdVaca AND l.NroLactancia = p.NroLactancia
     WHERE v.IdVaca = pIdVaca
-    ORDER BY l.NroLactancia;
+    ORDER BY l.NroLactancia DESC;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ LISTAR RESUMENES COMPLETOS LACTANCIAS VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_resumen_completo_lactancias_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_resumen_completo_lactancias_vaca`(pIdVaca int)
+SALIR: BEGIN
+	/*
+	Permite listar las lactancias una Vaca. 
+	*/
+    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada,
+    TIMESTAMPDIFF(MONTH, v.FechaNac,NOW()) Meses, TIMESTAMPDIFF(DAY, l.FechaInicio ,NOW()) Dias,
+    st.Datos 'Data', st.Etiquetas 'Labels'
+    FROM (
+        SELECT  JSON_ARRAYAGG(tt.Produccion) Datos, JSON_ARRAYAGG(tt.Fecha) Etiquetas
+        FROM (
+            SELECT p.Produccion, so.Fecha
+            FROM Producciones p
+            INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+            INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+            INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+            WHERE   v.IdVaca = pIdVaca
+            ORDER BY Fecha DESC
+        ) tt
+    ) st
+    ,Lactancias l
+    INNER JOIN Vacas v USING(IdVaca)
+    INNER JOIN Producciones p ON l.IdVaca = p.IdVaca AND l.NroLactancia = p.NroLactancia
+    WHERE v.IdVaca = pIdVaca
+    ORDER BY l.NroLactancia DESC;
 END$$
 DELIMITER ;
 
@@ -290,6 +325,28 @@ SALIR: BEGIN
 END$$
 DELIMITER ;
 
+-- -----------------------------------------------/ LISTAR RESUMEN PRODUCCIONES VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_resumen_producciones_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_resumen_producciones_vaca`(pIdVaca int, pNroLactancia tinyint)
+SALIR: BEGIN
+	/*
+	Permite listar las producciones de la ultima lactancia de una Vaca, en funcion de sus sesiones de ordeñe. 
+	*/
+    SELECT  JSON_ARRAYAGG(tt.Produccion) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+    FROM (
+        SELECT p.Produccion, so.Fecha
+        FROM Producciones p
+        INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+        INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+        INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+        WHERE   l.IdVaca = pIdVaca
+                AND l.NroLactancia = pNroLactancia
+        ORDER BY Fecha DESC
+    ) tt;
+END$$
+DELIMITER ;
+
 -- -----------------------------------------------/ CAMBIAR ESTADO VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_cambiar_estado_vaca`; 
 DELIMITER $$
@@ -320,15 +377,15 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
      -- Controla Parámetros Incorrectos    
-    IF EXISTS(  
-        SELECT v.IdVaca FROM Vacas v
-        INNER JOIN EstadosVacas ev USING (IdVaca)
-        WHERE   v.IdVaca = pIdVaca
-                AND (ev.Estado <> 'Vendida' AND ev.Estado <> 'Muerta')
-                AND ev.FechaFin IS NULL) THEN
-        SELECT 'La Vaca se encuentra Vendida o Muerta, no puede cambiar de estado.' Mensaje;
-        LEAVE SALIR;
-	END IF;
+    -- IF EXISTS(  
+    --     SELECT v.IdVaca FROM Vacas v
+    --     INNER JOIN EstadosVacas ev USING (IdVaca)
+    --     WHERE   v.IdVaca = pIdVaca
+    --             AND (ev.Estado = 'Vendida' OR ev.Estado = 'Muerta')
+    --             AND ev.FechaFin IS NULL) THEN
+    --     SELECT 'La Vaca se encuentra Vendida o Muerta, no puede cambiar de estado.' Mensaje;
+    --     LEAVE SALIR;
+	-- END IF;
     START TRANSACTION;
         SET pFechaFin = NULL;
 
@@ -361,6 +418,7 @@ SALIR: BEGIN
         Devuelve OK o el mensaje de error en Mensaje.
     */
     DECLARE pMensaje varchar(100);
+    DECLARE pIdLoteAntiguo int;
     DECLARE pNroVacaLote int;
     DECLARE pFechaFin date;
     -- Manejo de error en la transacción
@@ -385,14 +443,18 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     START TRANSACTION;
-        -- Modifaca
-        UPDATE VacasLote
-        SET FechaFin = NOW()
-        WHERE IdVaca = pIdVaca AND FechaFin IS NULL;
+        SET pIdLoteAntiguo = (SELECT IdLote FROM VacasLote WHERE IdVaca = pIdVaca AND FechaEgreso IS NULL);
 
-        SET pNroVacaLote = (SELECT COALESCE(MAX(NroVacaLote), 0)+1 FROM VacasLote WHERE IdVaca = pIdVaca);
-        INSERT INTO VacasLote
-        SELECT pIdVaca, pNroVacaLote, NOW(), NULL;
+        IF(pIdLoteAntiguo != pIdLote) THEN
+            -- Modifica
+            UPDATE VacasLote
+            SET FechaEgreso = NOW()
+            WHERE IdVaca = pIdVaca AND FechaEgreso IS NULL;
+
+            SET pNroVacaLote = (SELECT COALESCE(MAX(NroVacaLote), 0)+1 FROM VacasLote WHERE IdVaca = pIdVaca AND IdLote = pIdLote);
+            INSERT INTO VacasLote
+            SELECT pIdVaca, pIdLote, pNroVacaLote, NOW(), NULL;
+        END IF;
 
         SELECT 'OK' Mensaje;
 	COMMIT;

@@ -45,7 +45,6 @@ SALIR: BEGIN
         INNER JOIN Ventas v USING(IdVenta)
         INNER JOIN Sucursales s USING(IdSucursal)
         WHERE   s.IdTambo = pIdTambo
-            AND p.Estado = 'A'
             AND p.Fecha BETWEEN DATE_SUB(NOW(), INTERVAL 30 DAY) AND NOW()
         GROUP BY DATE(p.Fecha)
         ORDER BY Fecha ASC

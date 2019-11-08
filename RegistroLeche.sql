@@ -120,6 +120,7 @@ SALIR: BEGIN
     WHERE	IdRegistroLeche = pIdRegistroLeche;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ BORRAR REGISTRO DE LECHE /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_borrar_registroleche` ; 
 DELIMITER $$

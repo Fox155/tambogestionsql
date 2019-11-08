@@ -165,6 +165,7 @@ SALIR: BEGIN
 	COMMIT;
 END$$
 DELIMITER ;
+
 -- -----------------------------------------------/ BUSCAR  SUCURSALES /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_sucursales`;
 DELIMITER $$
@@ -196,5 +197,24 @@ SALIR: BEGIN
         ORDER BY Fecha ASC
         LIMIT pLimite
     ) tt;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ BUSCAR  SUCURSALES /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_listar_usuarios_sucursales`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_listar_usuarios_sucursales`(pIdSucursal int)
+SALIR: BEGIN
+	/*
+	Permite listar los Usuarios asignados a una Sucursal. 
+	*/
+    SELECT  u.*, tu.Tipo
+    FROM    Sucursales s
+    INNER JOIN UsuariosSucursales us USING(IdSucursal)
+    INNER JOIN Usuarios u USING(IdUsuario)
+    INNER JOIN TiposUsuarios tu USING(IdTipoUsuario)
+    WHERE   s.IdSucursal = pIdSucursal
+            AND us.FechaHasta IS NULL
+            AND u.Estado = 'A';
 END$$
 DELIMITER ;
