@@ -98,9 +98,16 @@ SALIR: BEGIN
 	/*
     Procedimiento que sirve para instanciar un lote desde la base de datos.
     */
-	SELECT	*
-    FROM	Lotes
-    WHERE	Idlote = pIdlote;
+    SELECT  s.Nombre Sucursal,COUNT(vl.IdVaca) AS Ganado , l.*, CONCAT(l.Nombre, ' - ', s.Nombre) LoteSucursal
+    FROM    Lotes l
+    INNER JOIN VacasLote vl on vl.IdLote = l.IdLote
+    INNER JOIN Sucursales s USING(IdSucursal)
+    INNER JOIN Vacas v ON vl.IdVaca = v.IdVaca
+    INNER JOIN EstadosVacas ev ON ev.IdVaca = v.IdVaca
+    WHERE   l.Idlote = pIdlote
+            AND vl.FechaEgreso IS NULL
+            AND ev.FechaFin IS NULL
+            AND (ev.Estado <> 'VENDIDA' AND ev.Estado <> 'MUERTA' AND ev.Estado <> 'BAJA');
 END$$
 DELIMITER ;
 -- -----------------------------------------------/ BORRAR LOTE /----------------------------------------
