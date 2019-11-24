@@ -163,7 +163,7 @@ SALIR: BEGIN
 	-- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-		SHOW ERRORS;
+		-- SHOW ERRORS;
 		SELECT 'Error en la transacción. Contáctese con el administrador.' Mensaje;
         ROLLBACK;
 	END;
@@ -183,11 +183,11 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     START TRANSACTION;
-        -- Borra la lista de precio
-        DELETE FROM ListasPrecio WHERE IdListaPrecio = pIdListaPrecio;
-
         -- Borra Historico
         DELETE FROM HistoricoListasPrecio WHERE IdListaPrecio = pIdListaPrecio;
+
+        -- Borra la lista de precio
+        DELETE FROM ListasPrecio WHERE IdListaPrecio = pIdListaPrecio;
 
         SELECT 'OK' Mensaje;
 	COMMIT;

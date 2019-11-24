@@ -9,6 +9,7 @@ SALIR: BEGIN
 	*/
     DECLARE pMensaje varchar(100);
     DECLARE pIdSucursal int ;
+    DECLARE pIdRegistroLeche bigint;
     -- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -41,17 +42,21 @@ SALIR: BEGIN
 
     START TRANSACTION;
         -- Insercion en Sucursales
-	    INSERT INTO `Sucursales` VALUES (DEFAULT,pIdTambo,pNombre,pDatos);
-        SET pIdSucursal = (select last_insert_id()); 
+	    INSERT INTO `Sucursales` 
+        SELECT 0, pIdTambo, pNombre, pDatos, 0;
+
+        SET pIdSucursal = LAST_INSERT_ID(); 
+
         -- Insercion de Usuarios administradores en las sucursales
         INSERT INTO UsuariosSucursales
-        SELECT  0,u.IdUsuario, pIdSucursal, NOW(), NULL
+        SELECT  0, u.IdUsuario, pIdSucursal, NOW(), NULL
         FROM Usuarios u INNER JOIN TiposUsuarios t
         WHERE t.Tipo = 'Administrador' AND u.IdTambo = pIdTambo;
+
+        SET pIdRegistroLeche = (SELECT COALESCE(MAX(IdRegistroLeche), 0)+1 FROM RegistrosLeche);
         -- Insercion del primer registro de la sucursal
-        INSERT INTO RegistrosLeche VALUES (pIdSucursal,0,0,NOW());
-        -- INSERT INTO RegistrosLeche
-        -- SELECT pIdSucursal,0,0,NOW(); 
+        INSERT INTO RegistrosLeche
+        SELECT pIdSucursal, pIdRegistroLeche, 0, NOW();
 
         SELECT CONCAT ('OK', pIdSucursal) Mensaje;
 	COMMIT;

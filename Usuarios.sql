@@ -1,7 +1,7 @@
 DROP PROCEDURE IF EXISTS `tsp_alta_usuario`;
 DELIMITER $$
 CREATE PROCEDURE `tsp_alta_usuario`(pTokenAud varchar(500), pIdTipoUsuario tinyint, pUsuario varchar(100), 
-pPassword varchar(255), pEmail varchar(100))
+pPassword varchar(255), pEmail varchar(100), pIdsSucursales JSON)
 SALIR:BEGIN
 	/*
     Permite dar de alta un Usuario controlando que el nombre del usuario no exista ya, siendo nombres y apellidos obligatorios.
@@ -44,6 +44,10 @@ SALIR:BEGIN
 	END IF;
 	IF (pIdTipoUsuario IS NULL OR pIdTipoUsuario = 0) THEN
         SELECT 'Debe ingresar el tipo de usuario.' Mensaje;
+        LEAVE SALIR;
+	END IF;
+	IF (pIdsSucursales IS NULL) THEN
+        SELECT 'Debe indicar las sucursales.' Mensaje;
         LEAVE SALIR;
 	END IF;
 

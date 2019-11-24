@@ -244,7 +244,7 @@ SALIR: BEGIN
 	/*
 	Permite listar las lactancias una Vaca. 
 	*/
-    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada, SUM(p.Produccion) Corregida,
+    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada, AVG(p.Produccion) Promedio,
     TIMESTAMPDIFF(MONTH, v.FechaNac,NOW()) Meses, TIMESTAMPDIFF(DAY, l.FechaInicio ,NOW()) Dias
     FROM Lactancias l
     INNER JOIN Vacas v USING(IdVaca)
@@ -262,7 +262,7 @@ SALIR: BEGIN
 	/*
 	Permite listar las lactancias una Vaca. 
 	*/
-    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada,
+    SELECT  l.*, COUNT(p.IdProduccion) Producciones, SUM(p.Produccion) Acumulada, AVG(p.Produccion) Promedio,
     TIMESTAMPDIFF(MONTH, v.FechaNac,NOW()) Meses, TIMESTAMPDIFF(DAY, l.FechaInicio ,NOW()) Dias,
     st.Datos 'Data', st.Etiquetas 'Labels'
     FROM (
@@ -306,12 +306,13 @@ DELIMITER ;
 -- -----------------------------------------------/ RESUMEN PRODUCCIONES VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_resumen_producciones_vaca`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_resumen_producciones_vaca`(pIdVaca int)
+CREATE PROCEDURE `tsp_resumen_producciones_vaca`(pIdVaca int, pNroLactancia tinyint)
 SALIR: BEGIN
 	/*
 	Permite listar las producciones de la ultima lactancia de una Vaca, en funcion de sus sesiones de ordeñe. 
 	*/
-    SELECT  JSON_ARRAYAGG(tt.Produccion) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
+    SELECT  JSON_ARRAYAGG(tt.Produccion) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels', DATE_FORMAT(NOW(), '%d de %M %Y a las %T') 'Footer',
+    tt2.*, tt3.*
     FROM (
         SELECT p.Produccion, so.Fecha
         FROM Producciones p
@@ -319,9 +320,57 @@ SALIR: BEGIN
         INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
         INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
         WHERE   v.IdVaca = pIdVaca
-                AND l.FechaFin IS NULL
+                AND l.NroLactancia = pNroLactancia
         ORDER BY Fecha DESC
-    ) tt;
+    ) tt INNER JOIN (
+        SELECT p.Produccion Pico, so.Fecha FechaPico, TIMESTAMPDIFF(DAY, l.FechaInicio , so.Fecha) DiasPico
+        FROM Producciones p
+        INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+        INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+        INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+        WHERE   v.IdVaca = pIdVaca
+                AND l.NroLactancia = pNroLactancia
+        ORDER BY p.Produccion DESC, so.Fecha ASC 
+        LIMIT 1
+    ) tt2 INNER JOIN(
+        SELECT l.*, COUNT(p.IdProduccion) ProduccionesL, SUM(p.Produccion) AcumuladaL, AVG(p.Produccion) PromedioL, TIMESTAMPDIFF(DAY, l.FechaInicio, l.FechaFin) DuracionL
+        FROM Producciones p
+        INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+        INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+        WHERE   v.IdVaca = pIdVaca
+                AND l.NroLactancia = pNroLactancia
+    )tt3;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ RESUMEN PRODUCCIONES VACA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_pico_lactancia_vaca`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_pico_lactancia_vaca`(pIdVaca int, pNroLactancia tinyint)
+SALIR: BEGIN
+	/*
+	Permite listar los detalles de una Lactancia. 
+	*/
+    SELECT *
+    FROM
+    (
+        SELECT p.Produccion Pico, so.Fecha FechaPico, TIMESTAMPDIFF(DAY, l.FechaInicio , so.Fecha) DiasPico
+        FROM Producciones p
+        INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
+        INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+        INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+        WHERE   v.IdVaca = pIdVaca
+                AND l.NroLactancia = pNroLactancia
+        ORDER BY p.Produccion DESC, so.Fecha ASC 
+        LIMIT 1
+    )tt INNER JOIN (
+        SELECT l.*, COUNT(p.IdProduccion) ProduccionesL, SUM(p.Produccion) AcumuladaL, AVG(p.Produccion) PromedioL, TIMESTAMPDIFF(DAY, l.FechaInicio, l.FechaFin) DuracionL
+        FROM Producciones p
+        INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
+        INNER JOIN Vacas v ON v.IdVaca = l.IdVaca
+        WHERE   v.IdVaca = pIdVaca
+                AND l.NroLactancia = pNroLactancia
+    )tt2;
 END$$
 DELIMITER ;
 

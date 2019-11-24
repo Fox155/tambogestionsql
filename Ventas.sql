@@ -275,15 +275,11 @@ SALIR: BEGIN
         LEAVE SALIR;
 	END IF;
     -- Control de Parametros Incorrectos
-    IF EXISTS (SELECT IdVenta FROM Pagos WHERE IdVenta = pIdVenta AND Estado = 'A') THEN
-        SELECT 'La Venta indicada no se puede borrar, tiene pagos activos asociados.' Mensaje;
-        LEAVE SALIR;
-	END IF;
     IF NOT EXISTS(SELECT IdVenta FROM Ventas WHERE IdVenta = pIdVenta AND Estado = 'A') THEN
         SELECT 'La Venta indicada no existe.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF NOT EXISTS(SELECT IdVenta FROM Ventas WHERE IdVenta = pIdVenta  AND Estado = 'B') THEN
+    IF EXISTS(SELECT IdVenta FROM Ventas WHERE IdVenta = pIdVenta AND Estado = 'B') THEN
 		SELECT 'La Venta ya se encuentra dada de baja.' Mensaje;
 		LEAVE SALIR;
 	END IF;
