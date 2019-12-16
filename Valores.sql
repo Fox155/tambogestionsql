@@ -11,4 +11,4 @@ INSERT INTO Usuarios VALUES (default,
 INSERT INTO Usuarios VALUES (default,
     (SELECT IdTambo FROM Tambos WHERE Nombre = 'Tambo Administracion'),
     (SELECT IdTipoUsuario FROM TiposUsuarios WHERE Tipo = 'Administrador'),
-    'topo', 'esemola@gmail.com', md5('topo'), SHA2(RAND(), 512), 0, NOW(), 'A');
+    'enzo', 'esemola@gmail.com', md5('enzo'), SHA2(RAND(), 512), 0, NOW(), 'A');

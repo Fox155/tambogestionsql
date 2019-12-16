@@ -184,20 +184,3 @@ SALIR: BEGIN
 	COMMIT;
 END$$
 DELIMITER ;
--- -----------------------------------------------/ BUSCAR PRODUCCIONES /----------------------------------------
--- DROP PROCEDURE IF EXISTS `tsp_buscar_producciones`;
--- DELIMITER $$
--- CREATE PROCEDURE `tsp_buscar_producciones`(pIdVaca int, pNroLactancia tinyint,pFecha date)
--- SALIR: BEGIN
--- 	/*
--- 	Permite buscar producciones de una vaca ,en una fecha.
---   si pNroLactancia= 0 muestra todas las producciones de la vaca de todas sus lactancias
--- 	*/
---     SELECT  *
---     FROM   Producciones
---     WHERE   ((FechaInicio=<pFecha AND pFecha=<FechaFin) OR pfecha = null)
---             AND IdVaca = pIdVaca
---             AND (NroLactancia = pNroLactancia OR pNroLactancia = 0)
---     ORDER BY Fecha;
--- END$$
--- DELIMITER ;

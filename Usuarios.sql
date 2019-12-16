@@ -131,13 +131,7 @@ SALIR:BEGIN
 			-- FROM JSON_TABLE(pIdsSucursales,"$[*]"
 			-- 	COLUMNS(pseudoid FOR ORDINALITY,
 			-- 	IdSucursal VARCHAR(100) PATH "$")) tt;
-		END IF;
-
-		-- Audita
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioAud,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'ALTA', 'I',
-		-- Usuarios.* FROM Usuarios WHERE IdUsuario = pIdUsuario;
-        
+		END IF;       
         SELECT CONCAT('OK') Mensaje;
 	COMMIT;
 END$$
@@ -150,8 +144,7 @@ pIdTipoUsuario tinyint, pEmail varchar(100))
 SALIR: BEGIN
 	/*
 	Permite modificar un Usuario existente. No se puede cambiar el nombre de usuario, ni la contraseña.
-	Los nombres y apellidos son obligatorios. El correo electrónico no debe existir ya. El rol debe 
-	existir. Si se cambia el rol, y se resetea token. 
+	Los nombres y apellidos son obligatorios. El correo electrónico no debe existir ya.
 	Devuelve OK o el mensaje de error en Mensaje.
 	*/
 	DECLARE pIdUsuarioGestion int;
@@ -187,20 +180,11 @@ SALIR: BEGIN
 
     START TRANSACTION;
 		SET pUsuarioAud = (SELECT Usuario FROM Usuarios WHERE IdUsuario = pIdUsuarioGestion);
-		-- Antes
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioGestion,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'MODIFICA', 'A', Usuarios.* 
-        -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
 		-- Modifica
         UPDATE Usuarios 
 		SET		Email=pEmail,
 				IdTipoUsuario=pIdTipoUsuario
 		WHERE	IdUsuario=pIdUsuario;
-		-- Despues
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioGestion,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'MODIFICA', 'D', Usuarios.* 
-        -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
-		
         SELECT 'OK' Mensaje;
 	COMMIT;
 END$$
@@ -241,11 +225,6 @@ SALIR: BEGIN
 	END IF;
     -- Borra el usuario
     START TRANSACTION;
-		-- Audito
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioAud,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'BORRA', 'B', Usuarios.* 
-        -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
-
         DELETE FROM Usuarios WHERE IdUsuario = pIdUsuario;
         
         SELECT 'OK' Mensaje;
@@ -326,16 +305,8 @@ SALIR: BEGIN
 	END IF;
     
 	START TRANSACTION;
-		-- Auditoría antes
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioAud,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'ACTIVAR', 'A', Usuarios.* 
-        -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
 		-- Activa
 		UPDATE Usuarios SET Estado = 'A' WHERE IdUsuario = pIdUsuario;
-		-- Auditoría después
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioAud,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'ACTIVAR', 'D', Usuarios.* 
-        -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
 		
         SELECT 'OK' Mensaje;
 	COMMIT;
@@ -376,16 +347,8 @@ SALIR: BEGIN
 	END IF;
     
 	START TRANSACTION;
-		-- Auditoría antes
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioAud,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'ACTIVAR', 'A', Usuarios.* 
-        -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
 		-- Activa
 		UPDATE Usuarios SET Estado = 'B' WHERE IdUsuario = pIdUsuario;
-		-- Auditoría después
-		-- INSERT INTO aud_Usuarios
-		-- SELECT 0, NOW(), CONCAT(pIdUsuarioAud,'@',pUsuarioAud), pIP, pUserAgent, pAplicacion, 'ACTIVAR', 'D', Usuarios.* 
-        -- FROM Usuarios WHERE IdUsuario = pIdUsuario;
 		
         SELECT 'OK' Mensaje;
 	COMMIT;
@@ -396,14 +359,6 @@ DROP PROCEDURE IF EXISTS `tsp_login`;
 DELIMITER $$
 CREATE PROCEDURE `tsp_login`(pUsuario varchar(100), pEsPassValido char(1), pToken varchar(500), pApp varchar(50))
 PROC: BEGIN
-	/*
-    Permite realizar el login de un usuario indicando la aplicación a la que desea acceder en 
-    pApp= A: Administración. Recibe como parámetro la autenticidad del par Usuario - Password 
-    en pEsPassValido [S | N]. Controla que el usuario no haya superado el límite de login's 
-    erroneos posibles indicado en MAXINTPASS, caso contrario se cambia El estado de la cuenta a
-    S: Suspendido. Un intento exitoso de inicio de sesión resetea el contador de intentos fallidos.
-    Devuelve un mensaje con el resultado del login y un objeto usuario en caso de login exitoso.
-    */
     DECLARE pIdUsuario int;
 	DECLARE pIdTambo int;
     -- Manejo de errores en la transacción
@@ -449,19 +404,9 @@ PROC: BEGIN
         WHEN 'N' THEN 
 			BEGIN
 				IF (SELECT IntentosPass FROM Usuarios WHERE Usuario = pUsuario) < 3 THEN					
-                    -- Antes
-					-- INSERT INTO aud_Usuarios
-					-- SELECT 0, NOW(), CONCAT(pIdUsuario,'@',pUsuario), pIP, pUserAgent, pApp, 'PASS#INVALIDO', 'A', Usuarios.* 
-					-- FROM Usuarios WHERE IdUsuario = pIdUsuario;
-                    
 					UPDATE	Usuarios 
 					SET		IntentosPass = IntentosPass + 1
 					WHERE	IdUsuario = pIdUsuario;
-                    
-                    -- Después
-					-- INSERT INTO aud_Usuarios
-					-- SELECT 0, NOW(), CONCAT(pIdUsuario,'@',pUsuario), pIP, pUserAgent, pApp, 'PASS#INVALIDO', 'D', Usuarios.* 
-					-- FROM Usuarios WHERE IdUsuario = pIdUsuario;
 					
 					SELECT 'Usuario y/o contraseña incorrectos. Ante repetidos intentos fallidos de inicio de sesión, la cuenta se suspenderá.' Mensaje;
 					COMMIT;
@@ -480,22 +425,11 @@ PROC: BEGIN
 				END IF;
 			END;
 		WHEN 'S' THEN
-			BEGIN
-            
-				-- Antes
-				-- INSERT INTO aud_Usuarios
-				-- SELECT 0, NOW(), CONCAT(pIdUsuario,'@',pUsuario), pIP, pUserAgent, pApp, 'LOGIN', 'A', Usuarios.* 
-				-- FROM Usuarios WHERE IdUsuario = pIdUsuario;
-                
+			BEGIN              
                 UPDATE	Usuarios
                 SET		Token = pToken,
                         IntentosPass = 0
 				WHERE	IdUsuario = pIdUsuario;
-                
-                -- Después
-				-- INSERT INTO aud_Usuarios 
-				-- SELECT 0, NOW(), CONCAT(pIdUsuario,'@',pUsuario), pIP, pUserAgent, pApp, 'LOGIN', 'D', Usuarios.* 
-				-- FROM Usuarios WHERE IdUsuario = pIdUsuario;
                 
                 COMMIT;
             END;
@@ -539,18 +473,6 @@ DROP PROCEDURE IF EXISTS `tsp_cambiar_password`;
 DELIMITER $$
 CREATE PROCEDURE `tsp_cambiar_password`(pModo char(1), pToken varchar(500), pPasswordNew varchar(255))
 SALIR: BEGIN
-	/*
-    Permite cambiar la contraseña por el hash recibido como parámetro.
-
-    Cuando pModo = U, debe pasar el token de sesión, el usuario debe existir, estar activo y 
-    debe ingresar la contraseña anterior.
-	Devuelve OK o el mensaje de error en Mensaje.
-
-    Cuando pModo = A, se utiliza para rehash. Debe pasar el token de sesión, el usuario debe 
-    existir, estar activo. Sólo actualiza hash en la tabla Usuarios.
-    Devuelve OK o el mensaje de error en Mensaje.
-    */
-    
     DECLARE pIdUsuario int;
 	DECLARE pUsuario varchar(120);
     -- Manejo de error en la transacción
