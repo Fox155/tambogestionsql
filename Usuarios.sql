@@ -1,7 +1,7 @@
 DROP PROCEDURE IF EXISTS `tsp_alta_usuario`;
 DELIMITER $$
 CREATE PROCEDURE `tsp_alta_usuario`(pTokenAud varchar(500), pIdTipoUsuario tinyint, pUsuario varchar(100), 
-pPassword varchar(255), pEmail varchar(100), pIdsSucursales JSON)
+pPassword varchar(255), pEmail varchar(100), pIdsSucursales text)
 SALIR:BEGIN
 	/*
     Permite dar de alta un Usuario controlando que el nombre del usuario no exista ya, siendo nombres y apellidos obligatorios.
@@ -14,6 +14,8 @@ SALIR:BEGIN
 	DECLARE pUsuarioAud varchar(100);
     DECLARE pMensaje varchar(100);
     DECLARE pNow datetime;
+	DECLARE pIdUsuario int;
+	DECLARE pTipo varchar(45);
     -- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -46,16 +48,14 @@ SALIR:BEGIN
         SELECT 'Debe ingresar el tipo de usuario.' Mensaje;
         LEAVE SALIR;
 	END IF;
-	IF (pIdsSucursales IS NULL) THEN
-        SELECT 'Debe indicar las sucursales.' Mensaje;
-        LEAVE SALIR;
-	END IF;
 
 	-- Controla Parámetros Incorrectos
     IF NOT EXISTS(SELECT IdTipoUsuario FROM TiposUsuarios WHERE IdTipoUsuario = pIdTipoUsuario) THEN
         SELECT 'El tipo de usuario seleccionado es inexistente.' Mensaje;
         LEAVE SALIR;
 	END IF;
+
+	SET pTipo = (SELECT Tipo FROM TiposUsuarios WHERE IdTipoUsuario = pIdTipoUsuario);
 
 	SELECT IdUsuario INTO pIdUsuarioAud
 	FROM Usuarios u INNER JOIN Tambos t USING(IdTambo)
@@ -64,25 +64,74 @@ SALIR:BEGIN
 	LIMIT		1;
 
 	IF (pIdUsuarioAud IS NULL) THEN
-		SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
+		SELECT 'Usted no posee permisos para realizar esta acción.' Mensaje;
         LEAVE SALIR;
 	END IF;
 
 	IF NOT EXISTS(SELECT tu.IdTipoUsuario FROM TiposUsuarios tu
 		INNER JOIN Usuarios u USING(IdTipoUsuario) WHERE u.IdUsuario = pIdUsuarioAud AND tu.Tipo = 'Administrador') THEN
-        SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
+        SELECT 'Usted no posee permisos para realizar esta acción.' Mensaje;
         LEAVE SALIR;
 	END IF;
+
 	IF NOT EXISTS (SELECT IdTambo FROM Tambos t INNER JOIN Usuarios u USING(IdTambo) WHERE t.Estado = 'A' AND u.IdUsuario = pIdUsuarioAud) THEN
-		SELECT 'Usted no posee puede para realizar esta acción, su tambo no está habilitada.' Mensaje;
+		SELECT 'Usted no posee permisos para realizar esta acción, su tambo no está habilitada.' Mensaje;
 		LEAVE SALIR;
     END IF;
+
+	IF (pTipo != 'Administrador') THEN
+		IF NOT EXISTS (SELECT tt.IdSucursal
+			FROM (SELECT 
+				JSON_EXTRACT(pIdsSucursales, CONCAT('$[', B._row, ']')) IdSucursal
+				FROM (SELECT pIdsSucursales AS B) AS A
+				INNER JOIN t_list_row AS B ON B._row < JSON_LENGTH(pIdsSucursales)
+			) tt
+			INNER JOIN Sucursales USING(IdSucursal) ) THEN
+			SELECT 'Sucursales invalidas.' Mensaje;
+			LEAVE SALIR;
+		END IF;
+
+		-- IF NOT EXISTS (SELECT tt.IdListaPrecio
+		-- 	FROM JSON_TABLE(pIdsListaPrecio,"$[*]"
+		-- 		COLUMNS(pseudoid FOR ORDINALITY,
+		-- 		IdListaPrecio VARCHAR(100) PATH "$")) tt
+		-- 	INNER JOIN ListasPrecio lp USING(IdListaPrecio) WHERE lp.Estado = 'A') THEN
+		-- 	SELECT 'Todas las listas de precio indicadas deben estar activas.' Mensaje;
+		-- 	LEAVE SALIR;
+		-- END IF;
+	END IF;
 	
     START TRANSACTION;
+		SET pNow = NOW();
+
 		SELECT Usuario, IdTambo INTO pUsuarioAud, pIdTambo FROM Usuarios WHERE IdUsuario = pIdUsuarioAud;
         
         SET pToken = (SELECT SHA2(RAND(), 512));
-        INSERT INTO Usuarios VALUES (DEFAULT ,pIdTambo, pIdTipoUsuario, pUsuario, pEmail, pPassword, pToken, 0, NOW(), 'A');
+        INSERT INTO Usuarios VALUES (DEFAULT ,pIdTambo, pIdTipoUsuario, pUsuario, pEmail, pPassword, pToken, 0, pNow, 'A');
+
+		SET pIdUsuario = LAST_INSERT_ID();
+
+		-- Insercion de UsuariosSucursales
+		IF (pTipo = 'Administrador') THEN
+			INSERT INTO UsuariosSucursales
+			SELECT      1, pIdUsuario, s.IdSucursal, pNow, NULL
+			FROM Sucursales s WHERE IdTambo = pIdTambo;
+		ELSE
+			INSERT INTO UsuariosSucursales
+			SELECT      1, pIdUsuario, tt.IdSucursal, pNow, NULL
+			FROM (SELECT 
+				JSON_EXTRACT(pIdsSucursales, CONCAT('$[', B._row, ']')) IdSucursal
+				FROM (SELECT pIdsSucursales AS B) AS A
+				INNER JOIN t_list_row AS B ON B._row < JSON_LENGTH(pIdsSucursales)
+			) tt
+			INNER JOIN Sucursales USING(IdSucursal);
+
+			-- INSERT INTO UsuariosSucursales
+			-- SELECT      1, pIdUsuario, tt.IdSucursal, pNow, NULL
+			-- FROM JSON_TABLE(pIdsSucursales,"$[*]"
+			-- 	COLUMNS(pseudoid FOR ORDINALITY,
+			-- 	IdSucursal VARCHAR(100) PATH "$")) tt;
+		END IF;
 
 		-- Audita
 		-- INSERT INTO aud_Usuarios
@@ -132,7 +181,7 @@ SALIR: BEGIN
 	END IF;
 	IF NOT EXISTS(SELECT u.IdUsuario FROM Usuarios u
 	INNER JOIN TiposUsuarios tu WHERE Token = pToken AND tu.Tipo = 'Administrador') THEN
-		SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
+		SELECT 'Usted no posee permisos para realizar esta acción.' Mensaje;
 		LEAVE SALIR; 
 	END IF;
 
@@ -187,7 +236,7 @@ SALIR: BEGIN
 	END IF;
 	IF NOT EXISTS(SELECT u.IdUsuario FROM Usuarios u
 	INNER JOIN TiposUsuarios tu WHERE Token = pToken AND tu.Tipo = 'Administrador') THEN
-		SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
+		SELECT 'Usted no posee permisos para realizar esta acción.' Mensaje;
 		LEAVE SALIR; 
 	END IF;
     -- Borra el usuario
@@ -272,7 +321,7 @@ SALIR: BEGIN
 	END IF;
 	IF NOT EXISTS(SELECT u.IdUsuario FROM Usuarios u
 	INNER JOIN TiposUsuarios tu WHERE Token = pToken AND tu.Tipo = 'Administrador') THEN
-		SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
+		SELECT 'Usted no posee permisos para realizar esta acción.' Mensaje;
 		LEAVE SALIR; 
 	END IF;
     
@@ -322,7 +371,7 @@ SALIR: BEGIN
 	END IF;
 	IF NOT EXISTS(SELECT u.IdUsuario FROM Usuarios u
 	INNER JOIN TiposUsuarios tu WHERE Token = pToken AND tu.Tipo = 'Administrador') THEN
-		SELECT 'Usted no posee puede para realizar esta acción.' Mensaje;
+		SELECT 'Usted no posee permisos para realizar esta acción.' Mensaje;
 		LEAVE SALIR; 
 	END IF;
     
@@ -373,7 +422,7 @@ PROC: BEGIN
 		SELECT 'Debe indicar un usuario.' Mensaje;
         LEAVE PROC;
 	END IF;
-    IF NOT EXISTS (SELECT IdUsuario FROM Usuarios WHERE Usuario = pUsuario AND Estado = 'A') THEN
+    IF NOT EXISTS (SELECT IdUsuario FROM Usuarios WHERE Usuario = pUsuario AND Estado != 'B') THEN
 		SELECT 'El usuario indicado no existe en el sistema o se encuentra dado baja.' Mensaje;
         LEAVE PROC;
 	END IF;
@@ -515,7 +564,7 @@ SALIR: BEGIN
 		SELECT 'No se puede cambiar la contraseña. No es una sesión válida.' Mensaje;
         LEAVE SALIR;
     END IF;
-	IF pModo IN ('U','A') AND NOT EXISTS(SELECT Token FROM Usuarios WHERE Token = pToken AND Estado = 'A') THEN
+	IF pModo IN ('U','A') AND NOT EXISTS(SELECT Token FROM Usuarios WHERE Token = pToken AND Estado != 'B') THEN
 		SELECT 'No se puede cambiar la contraseña. El usuario no está activo.' Mensaje;
         LEAVE SALIR;
 	END IF;
@@ -523,25 +572,13 @@ SALIR: BEGIN
     SET pIdUsuario = (SELECT IdUsuario FROM Usuarios WHERE Token = pToken);
 
     START TRANSACTION;
-        IF pModo = 'A' THEN
-			
-			SET pToken = MD5(RAND());
-			
-			UPDATE 	Usuarios 
-            SET 	Password = pPasswordNew,
-					Token = pToken
-			WHERE 	IdUsuario = pIdUsuario;
-			
-        END IF;
-        
         IF pModo = 'U' THEN
 			
 			SET pToken = MD5(RAND());
 			
 			UPDATE 	Usuarios 
             SET 	Password = pPasswordNew, 
-					Estado = 'C', 
-                    FechaUltIntento = NOW(),
+					Estado = 'A',
 					Token = pToken
 			WHERE 	IdUsuario = pIdUsuario;		
 			
@@ -579,12 +616,16 @@ SALIR: BEGIN
         SELECT 'El usuario indicado no existe.' Mensaje;
         LEAVE SALIR;
 	END IF;
-	IF NOT EXISTS (SELECT IdUsuario FROM Usuarios WHERE IdUsuario = pIdUsuario AND Estado = 'A') THEN
+	IF NOT EXISTS (SELECT IdUsuario FROM Usuarios WHERE IdUsuario = pIdUsuario AND Estado != 'B') THEN
         SELECT 'El usuario indicado no está activo.' Mensaje;
         LEAVE SALIR;
 	END IF;
-    START TRANSACTION;
+	INNER JOIN TiposUsuarios tu WHERE Token = pToken AND tu.Tipo = 'Administrador') THEN
+		SELECT 'Usted no posee permisos para realizar esta acción.' Mensaje;
+		LEAVE SALIR; 
+	END IF;
 
+    START TRANSACTION;
 		-- Modifica
         UPDATE 	Usuarios 
 		SET		Estado='C',
@@ -593,7 +634,6 @@ SALIR: BEGIN
 		WHERE	IdUsuario=pIdUsuario;
 
         SELECT 'OK' Mensaje;
-
 	COMMIT;
 END$$
 DELIMITER ;
@@ -611,16 +651,20 @@ BEGIN
 END$$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `tsp_dame_tipo_usuario`;
+DROP PROCEDURE IF EXISTS `tsp_dame_password_hash`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_dame_tipo_usuario`(pToken varchar(500))
+CREATE PROCEDURE `tsp_dame_password_hash`(pUsuario varchar(120))
 BEGIN
 	/*
-    Permite obtener el tipo de usuario de un usuario a partir de su nombre de usuario.
+    Permite obtener el password hash de un usuario a partir de su nombre de usuario.
     */
-	SELECT tu.Tipo TipoUsuario
-	FROM TiposUsuarios tu INNER JOIN Usuarios u USING(IdTipoUsuario)
-	WHERE u.Token = pToken;
+	IF EXISTS (SELECT Usuario FROM Usuarios WHERE Usuario = pUsuario) THEN
+		SELECT	Password 
+        FROM	Usuarios
+        WHERE	Usuario = pUsuario;
+	ELSE
+		SELECT NULL Password;
+	END IF;
 END$$
 DELIMITER ;
 

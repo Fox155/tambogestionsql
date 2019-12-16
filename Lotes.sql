@@ -155,21 +155,23 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR  LOTES /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_lotes`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_lotes`(pIdSucursal int,pIdTambo int, pIncluyeBajas char(1), pCadena varchar(100))
+CREATE PROCEDURE `tsp_buscar_lotes`(pIdSucursal int,pIdTambo int, pIdUsuario int, pIncluyeBajas char(1), pCadena varchar(100))
 SALIR: BEGIN
 	/*
 	Permite buscar Lotes dentro de una Sucursal , indicando una cadena de búsqueda.
     Si pIdSucursal = 0 lista para todos los Lotes de todas las sucursales.
 	*/
-    SELECT  s.Nombre Sucursal, l.*, CONCAT(l.Nombre, ' - ', s.Nombre) LoteSucursal-- , COUNT(vl.IdVaca) AS Ganado
+    SELECT  s.Nombre Sucursal, l.*, CONCAT(l.Nombre, ' - ', s.Nombre) LoteSucursal, COUNT(vl.IdVaca) AS Ganado
     FROM    Lotes l
     INNER JOIN Sucursales s USING(IdSucursal)
+    INNER JOIN UsuariosSucursales us USING(IdSucursal)
     LEFT JOIN VacasLote vl on vl.IdLote = l.IdLote
     LEFT JOIN Vacas v ON vl.IdVaca = v.IdVaca
     LEFT JOIN EstadosVacas ev ON ev.IdVaca = v.IdVaca
     WHERE   l.Nombre LIKE CONCAT('%', pCadena, '%')
             AND (IdTambo = pIdTambo)
             AND (IdSucursal = pIdSucursal OR pIdSucursal = 0)
+            AND (us.IdUsuario = pIdUsuario AND us.FechaHasta IS NULL)
             AND (pIncluyeBajas = 'S'  OR l.Estado = 'A')
             AND vl.FechaEgreso IS NULL
             AND ev.FechaFin IS NULL
@@ -273,7 +275,7 @@ SALIR: BEGIN
     IF (pFechaInicio IS NOT NULL AND pFechaFin IS NOT NULL) THEN
         SELECT  JSON_ARRAYAGG(tt.Producciones) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
         FROM (
-            SELECT SUM(p.Produccion) Producciones, DATE_FORMAT(so.Fecha, '%d de %M %Y') Fecha
+            SELECT AVG(p.Produccion) Producciones, DATE_FORMAT(so.Fecha, '%d de %M %Y') Fecha
             FROM Producciones p
             INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
             INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia
@@ -287,7 +289,7 @@ SALIR: BEGIN
     ELSE
         SELECT  JSON_ARRAYAGG(tt.Producciones) 'Data', JSON_ARRAYAGG(tt.Fecha) 'Labels'
         FROM (
-            SELECT SUM(p.Produccion) Producciones, DATE_FORMAT(so.Fecha, '%d de %M %Y') Fecha
+            SELECT AVG(p.Produccion) Producciones, DATE_FORMAT(so.Fecha, '%d de %M %Y') Fecha
             FROM Producciones p
             INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
             INNER JOIN Lactancias l ON p.IdVaca = l.IdVaca AND p.NroLactancia=l.NroLactancia

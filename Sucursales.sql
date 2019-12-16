@@ -174,15 +174,17 @@ DELIMITER ;
 -- -----------------------------------------------/ BUSCAR  SUCURSALES /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_buscar_sucursales`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_buscar_sucursales`(pIdTambo int, pCadena varchar(100))
+CREATE PROCEDURE `tsp_buscar_sucursales`(pIdTambo int, pIdUsuario int, pCadena varchar(100))
 SALIR: BEGIN
 	/*
 	Permite buscar Sucursales dentro de un tambo , indicando una cadena de búsqueda. 
 	*/
-    SELECT  *  
-    FROM    Sucursales
+    SELECT  s.*  
+    FROM    Sucursales s
+    INNER JOIN UsuariosSucursales us USING(IdSucursal)
     WHERE   Nombre LIKE CONCAT('%', pCadena, '%') 
-            AND (IdTambo = pIdTambo);
+            AND (s.IdTambo = pIdTambo)
+            AND (us.IdUsuario = pIdUsuario AND us.FechaHasta IS NULL);
 END$$
 DELIMITER ;
 
