@@ -9,7 +9,8 @@ SALIR: BEGIN
 	*/
     DECLARE pMensaje varchar(100);
     DECLARE pIdProduccion bigint;
-    	-- Manejo de error en la transacción
+    
+    -- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
 		-- SHOW ERRORS;
@@ -33,11 +34,11 @@ SALIR: BEGIN
         SELECT 'Debe indicar los litros de produccion' Mensaje;
         LEAVE SALIR;
     END IF;
-    IF (pFechaInicio IS NULL OR pFechaInicio = '') THEN
+    IF (pFechaInicio IS NULL) THEN
         SELECT 'Debe ingresar la fecha inicio de la produccion' Mensaje;
         LEAVE SALIR;
 	  END IF;
-    IF (pFechaFin IS NULL OR pFechaFin = '') THEN
+    IF (pFechaFin IS NULL) THEN
         SELECT 'Debe ingresar la fecha fin de la produccion' Mensaje;
         LEAVE SALIR;
 	  END IF;
@@ -60,16 +61,16 @@ SALIR: BEGIN
         LEAVE SALIR;
 	  END IF;
     -- Control de fechas
-    IF NOT EXISTS(SELECT p.IdProduccion FROM Producciones p
-                                  INNER JOIN Lactancias l ON l.NroLactancia = p.NroLactancia
-                                  WHERE ((l.FechaInicio < DATE(pFechaInicio)) AND l.FechaFin IS NULL))THEN
-      		SELECT 'La fecha de la produccion esta en un periodo fuera del rango de la lactancia' Mensaje;
-      		LEAVE SALIR;
-	  END IF;
-    IF NOT EXISTS(SELECT IdSesionOrdeño FROM SesionesOrdeño WHERE FECHA = DATE(pFechaInicio))THEN
-          SELECT 'La fecha de la sesion de ordeño no coincide con la fecha de la produccion' Mensaje;
-          LEAVE SALIR;
-    END IF;
+    -- IF NOT EXISTS(SELECT p.IdProduccion FROM Producciones p
+    --                               INNER JOIN Lactancias l ON l.NroLactancia = p.NroLactancia
+    --                               WHERE ((l.FechaInicio < DATE(pFechaInicio)) AND l.FechaFin IS NULL))THEN
+    --   		SELECT 'La fecha de la produccion esta en un periodo fuera del rango de la lactancia' Mensaje;
+    --   		LEAVE SALIR;
+	--   END IF;
+    -- IF NOT EXISTS(SELECT IdSesionOrdeño FROM SesionesOrdeño WHERE FECHA = DATE(pFechaInicio))THEN
+    --       SELECT 'La fecha de la sesion de ordeño no coincide con la fecha de la produccion' Mensaje;
+    --       LEAVE SALIR;
+    -- END IF;
     START TRANSACTION;
         -- Insercion
         SET pIdProduccion = (SELECT COALESCE(MAX(IdProduccion), 0)+1 FROM Producciones);

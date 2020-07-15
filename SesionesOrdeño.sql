@@ -9,7 +9,8 @@ SALIR: BEGIN
 	*/
     DECLARE pMensaje varchar(100);
     DECLARE pIdSesionOrdeño bigint;
-    	-- Manejo de error en la transacción
+    
+    -- Manejo de error en la transacción
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
 		-- SHOW ERRORS;
@@ -21,8 +22,8 @@ SALIR: BEGIN
         SELECT 'Debe indicar la Sucursal' Mensaje;
         LEAVE SALIR;
 	END IF;
-    IF (pFecha IS NULL OR pFecha = '') THEN
-        SELECT 'Debe ingresar la fecha de la sesionordeño.' Mensaje;
+    IF (pFecha IS NULL) THEN
+        SELECT 'Debe ingresar la fecha de la sesion ordeño.' Mensaje;
         LEAVE SALIR;
 	END IF;
 
@@ -31,14 +32,16 @@ SALIR: BEGIN
         SELECT 'La Sucursal seleccionada es inexistente.' Mensaje;
         LEAVE SALIR;
 	END IF;
-  -- IF EXISTS(SELECT IdSesionOrdeño FROM SesionOrdeño WHERE pFecha = Fecha) THEN
-	-- SELECT 'Ya existe una sesion ordeño en ese periodo.' Mensaje;
-	-- LEAVE SALIR;
-	-- END IF;
     START TRANSACTION;
-        -- Insercion
-        SET pIdSesionOrdeño = (SELECT COALESCE(MAX(IdSesionOrdeño), 0)+1 FROM SesionesOrdeño);
-        INSERT INTO `SesionesOrdeño` VALUES (pIdSesionOrdeño, pIdSucursal, pFecha, pObservaciones);
+        IF EXISTS(SELECT IdSesionOrdeño FROM SesionesOrdeño WHERE pFecha = Fecha) THEN
+            -- Si ya existe la devuelvo
+            SET pIdSesionOrdeño = (SELECT IdSesionOrdeño FROM SesionesOrdeño WHERE pFecha = Fecha);
+        ELSE
+            -- Insercion
+            SET pIdSesionOrdeño = (SELECT COALESCE(MAX(IdSesionOrdeño), 0)+1 FROM SesionesOrdeño);
+            INSERT INTO `SesionesOrdeño` VALUES (pIdSesionOrdeño, pIdSucursal, pFecha, pObservaciones);
+        END IF;
+
         SELECT CONCAT ('OK', pIdSesionOrdeño) Mensaje;
 	COMMIT;
 END$$

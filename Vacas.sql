@@ -273,7 +273,7 @@ SALIR: BEGIN
 END$$
 DELIMITER ;
 
--- -----------------------------------------------/ RESUMEN PRODUCCIONES VACA /----------------------------------------
+-- -----------------------------------------------/ RESUMEN PRODUCCIONES VACA BASE /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_resumen_producciones_vaca`;
 DELIMITER $$
 CREATE PROCEDURE `tsp_resumen_producciones_vaca`(pIdVaca int, pNroLactancia tinyint)
@@ -281,8 +281,7 @@ SALIR: BEGIN
 	/*
 	Permite listar las producciones de la ultima lactancia de una Vaca, en funcion de sus sesiones de ordeñe. 
 	*/
-    SELECT  JSON_ARRAYAGG(tt.Produccion) 'Data', JSON_ARRAYAGG(DATE_FORMAT(tt.Fecha, '%d/%m')) 'Labels', DATE_FORMAT(NOW(), '%d de %M %Y a las %T') 'Footer',
-    tt2.*, tt3.*
+    SELECT  JSON_ARRAYAGG(tt.Produccion) 'Data', JSON_ARRAYAGG(DATE_FORMAT(tt.Fecha, '%d/%m')) 'Labels', DATE_FORMAT(NOW(), '%d de %M %Y a las %T') 'Footer'
     FROM (
         SELECT p.Produccion, so.Fecha
         FROM Producciones p
@@ -292,7 +291,20 @@ SALIR: BEGIN
         WHERE   v.IdVaca = pIdVaca
                 AND l.NroLactancia = pNroLactancia
         ORDER BY Fecha DESC
-    ) tt INNER JOIN (
+    ) tt;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ RESUMEN PRODUCCIONES VACA EXTRA /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_resumen_producciones_vaca_extra`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_resumen_producciones_vaca_extra`(pIdVaca int, pNroLactancia tinyint)
+SALIR: BEGIN
+	/*
+	Permite listar las producciones de la ultima lactancia de una Vaca, en funcion de sus sesiones de ordeñe. 
+	*/
+    SELECT  *
+    FROM (
         SELECT p.Produccion Pico, so.Fecha FechaPico, TIMESTAMPDIFF(DAY, l.FechaInicio , so.Fecha) DiasPico
         FROM Producciones p
         INNER JOIN SesionesOrdeño so USING(IdSesionOrdeño)
@@ -424,5 +436,27 @@ SALIR: BEGIN
 
         SELECT 'OK' Mensaje;
 	COMMIT;
+END$$
+DELIMITER ;
+
+-- -----------------------------------------------/ DAME VACA POR RFID /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_dame_vaca_por_rfid`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_dame_vaca_por_rfid`(pIdRFID int)
+SALIR: BEGIN
+ 	/*
+    Procedimiento que sirve para instanciar una Vaca desde la base de datos.
+    */
+    SELECT      v.*, lac.NroLactancia, l.IdSucursal
+    FROM        Vacas v 
+    INNER JOIN  EstadosVacas ev USING (IdVaca)
+    INNER JOIN  Lactancias lac USING (IdVaca)
+    INNER JOIN  VacasLote vl USING (IdVaca)
+    INNER JOIN  Lotes l USING(IdLote)
+    WHERE       IdRFID = pIdRFID
+                AND ev.FechaFin IS NULL
+                AND ev.Estado != 'Muerta' AND ev.Estado != 'Vendida'
+                AND lac.FechaFin IS NULL
+                AND vl.FechaEgreso IS NULL;
 END$$
 DELIMITER ;

@@ -225,3 +225,17 @@ SALIR: BEGIN
             AND u.Estado = 'A';
 END$$
 DELIMITER ;
+
+-- -----------------------------------------------/ DAME SUCURSAL POR APIKEY /----------------------------------------
+DROP PROCEDURE IF EXISTS `tsp_dame_sucursal_por_apikey`;
+DELIMITER $$
+CREATE PROCEDURE `tsp_dame_sucursal_por_apikey`(pApikey varchar(500))
+SALIR: BEGIN
+	/*
+    Procedimiento que sirve para instanciar una Sucursal desde la base de datos.
+    */
+	SELECT	*
+    FROM	Sucursales
+    WHERE	Datos->"$.ApiKey" = pApikey;
+END$$
+DELIMITER ;
