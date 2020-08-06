@@ -1,7 +1,7 @@
 -- -----------------------------------------------/ ALTA VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_alta_vaca`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_alta_vaca`(pIdCaravana int, pIdRFID int, pIdLote int, pNombre varchar (45), pRaza varchar (45), pPeso smallint,
+CREATE PROCEDURE `tsp_alta_vaca`(pIdCaravana bigint, pIdRFID bigint, pIdLote int, pNombre varchar (45), pRaza varchar (45), pPeso smallint,
 pFechaNac date, pObservaciones text, pFechaIngresoLote date, pEstadoVaca char(15))
 SALIR: BEGIN
 	/*
@@ -87,7 +87,7 @@ DELIMITER ;
 -- -----------------------------------------------/ MODIFICAR VACA /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_modificar_vaca`; 
 DELIMITER $$
-CREATE PROCEDURE `tsp_modificar_vaca`(pIdVaca int, pIdCaravana int, pIdRFID int, pNombre varchar (45), pRaza varchar (45),
+CREATE PROCEDURE `tsp_modificar_vaca`(pIdVaca int, pIdCaravana bigint, pIdRFID bigint, pNombre varchar (45), pRaza varchar (45),
 pPeso smallint, pFechaNac date, pObservaciones text)
 SALIR: BEGIN
     /*
@@ -248,7 +248,7 @@ SALIR: BEGIN
     TIMESTAMPDIFF(MONTH, v.FechaNac,NOW()) Meses, TIMESTAMPDIFF(DAY, l.FechaInicio, COALESCE(l.FechaFin, NOW())) Dias
     FROM Lactancias l
     INNER JOIN Vacas v USING(IdVaca)
-    INNER JOIN Producciones p ON l.IdVaca = p.IdVaca AND l.NroLactancia = p.NroLactancia
+    LEFT JOIN Producciones p ON l.IdVaca = p.IdVaca AND l.NroLactancia = p.NroLactancia
     WHERE v.IdVaca = pIdVaca
     GROUP BY l.NroLactancia
     ORDER BY l.NroLactancia DESC;
@@ -372,13 +372,13 @@ SALIR: BEGIN
         -- END IF;
 
         -- Modifaca
-        UPDATE EstadosVacas
-        SET FechaFin = NOW()
-        WHERE IdVaca = pIdVaca AND FechaFin IS NULL;
+        UPDATE  EstadosVacas
+        SET     FechaFin = NOW()
+        WHERE   IdVaca = pIdVaca AND FechaFin IS NULL;
 
-        SET pNroEstadoVaca = (SELECT COALESCE(MAX(NroEstadoVaca), 0)+1 FROM EstadosVacas WHERE IdVaca = pIdVaca);
+        SET         pNroEstadoVaca = (SELECT COALESCE(MAX(NroEstadoVaca), 0)+1 FROM EstadosVacas WHERE IdVaca = pIdVaca);
         INSERT INTO EstadosVacas
-        SELECT pIdVaca, pNroEstadoVaca, pEstado, NOW(), pFechaFin;
+        SELECT      pIdVaca, pNroEstadoVaca, pEstado, NOW(), pFechaFin;
 
         SELECT 'OK' Mensaje;
 	COMMIT;
@@ -442,7 +442,7 @@ DELIMITER ;
 -- -----------------------------------------------/ DAME VACA POR RFID /----------------------------------------
 DROP PROCEDURE IF EXISTS `tsp_dame_vaca_por_rfid`;
 DELIMITER $$
-CREATE PROCEDURE `tsp_dame_vaca_por_rfid`(pIdRFID int)
+CREATE PROCEDURE `tsp_dame_vaca_por_rfid`(pIdRFID bigint)
 SALIR: BEGIN
  	/*
     Procedimiento que sirve para instanciar una Vaca desde la base de datos.

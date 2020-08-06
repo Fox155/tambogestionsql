@@ -57,8 +57,8 @@ SALIR:BEGIN
 
 	SET pTipo = (SELECT Tipo FROM TiposUsuarios WHERE IdTipoUsuario = pIdTipoUsuario);
 
-	SELECT IdUsuario INTO pIdUsuarioAud
-	FROM Usuarios u INNER JOIN Tambos t USING(IdTambo)
+	SELECT 		IdUsuario INTO pIdUsuarioAud
+	FROM 		Usuarios u INNER JOIN Tambos t USING(IdTambo)
 	INNER JOIN	TiposUsuarios tu USING(IdTipoUsuario)
     WHERE		u.Token = pTokenAud AND u.Estado = 'A'
 	LIMIT		1;
@@ -114,11 +114,11 @@ SALIR:BEGIN
 		-- Insercion de UsuariosSucursales
 		IF (pTipo = 'Administrador') THEN
 			INSERT INTO UsuariosSucursales
-			SELECT      1, pIdUsuario, s.IdSucursal, pNow, NULL
-			FROM Sucursales s WHERE IdTambo = pIdTambo;
+			SELECT      pIdUsuario, s.IdSucursal, 1, pNow, NULL
+			FROM 		Sucursales s WHERE IdTambo = pIdTambo;
 		ELSE
 			INSERT INTO UsuariosSucursales
-			SELECT      1, pIdUsuario, tt.IdSucursal, pNow, NULL
+			SELECT      pIdUsuario, tt.IdSucursal, 1, pNow, NULL
 			FROM (SELECT 
 				JSON_EXTRACT(pIdsSucursales, CONCAT('$[', B._row, ']')) IdSucursal
 				FROM (SELECT pIdsSucursales AS B) AS A
@@ -127,7 +127,7 @@ SALIR:BEGIN
 			INNER JOIN Sucursales USING(IdSucursal);
 
 			-- INSERT INTO UsuariosSucursales
-			-- SELECT      1, pIdUsuario, tt.IdSucursal, pNow, NULL
+			-- SELECT      pIdUsuario, tt.IdSucursal, 1, pNow, NULL
 			-- FROM JSON_TABLE(pIdsSucursales,"$[*]"
 			-- 	COLUMNS(pseudoid FOR ORDINALITY,
 			-- 	IdSucursal VARCHAR(100) PATH "$")) tt;

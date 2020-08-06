@@ -95,8 +95,8 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `TamboGestion`.`Vacas` (
   `IdVaca` INT NOT NULL,
-  `IdCaravana` INT NOT NULL,
-  `IdRFID` INT NOT NULL,
+  `IdCaravana` BIGINT NOT NULL,
+  `IdRFID` BIGINT NOT NULL,
   `Nombre` VARCHAR(45) NULL,
   `Raza` VARCHAR(45) NULL,
   `Peso` TINYINT NULL COMMENT 'Peso expresado en KG',

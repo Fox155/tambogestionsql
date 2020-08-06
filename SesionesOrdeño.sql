@@ -70,7 +70,7 @@ DECLARE pIdSucursal int;
           SELECT 'Debe indicar el Idsesionordeño' Mensaje;
           LEAVE SALIR;
   END IF;
-  IF (pFecha IS NULL OR pFecha = '') THEN
+  IF (pFecha IS NULL) THEN
         SELECT 'Debe ingresar la fecha de la sesion de ordeño.' Mensaje;
         LEAVE SALIR;
 	END IF;

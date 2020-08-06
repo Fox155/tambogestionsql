@@ -108,11 +108,11 @@ DECLARE pNroLactancia tinyint;
         SELECT 'Debe indicar los litros de produccion' Mensaje;
         LEAVE SALIR;
     END IF;
-    IF (pFechaInicio IS NULL OR pFechaInicio = '') THEN
+    IF (pFechaInicio IS NULL) THEN
         SELECT 'Debe ingresar la fecha inicio de la produccion' Mensaje;
         LEAVE SALIR;
 	  END IF;
-    IF (pFechaFin IS NULL OR pFechaFin = '') THEN
+    IF (pFechaFin IS NULL) THEN
         SELECT 'Debe ingresar la fecha fin de la produccion' Mensaje;
         LEAVE SALIR;
 	  END IF;

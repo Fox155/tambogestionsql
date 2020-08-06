@@ -49,7 +49,7 @@ SALIR: BEGIN
 
         -- Insercion de Usuarios administradores en las sucursales
         INSERT INTO UsuariosSucursales
-        SELECT  0, u.IdUsuario, pIdSucursal, NOW(), NULL
+        SELECT  u.IdUsuario, pIdSucursal, 1, NOW(), NULL
         FROM Usuarios u INNER JOIN TiposUsuarios t
         WHERE t.Tipo = 'Administrador' AND u.IdTambo = pIdTambo;
 
@@ -120,7 +120,7 @@ SALIR: BEGIN
 	/*
     Procedimiento que sirve para instanciar una Sucursal desde la base de datos.
     */
-	SELECT	*
+	SELECT	*, Datos->>"$.Direccion" Direccion, Datos->>"$.Telefono" Telefono, Datos->>"$.ApiKey" ApiKey
     FROM	Sucursales
     WHERE	IdSucursal = pIdSucursal;
 END$$
@@ -179,12 +179,12 @@ SALIR: BEGIN
 	/*
 	Permite buscar Sucursales dentro de un tambo , indicando una cadena de búsqueda. 
 	*/
-    SELECT  s.*  
-    FROM    Sucursales s
-    INNER JOIN UsuariosSucursales us USING(IdSucursal)
-    WHERE   Nombre LIKE CONCAT('%', pCadena, '%') 
-            AND (s.IdTambo = pIdTambo)
-            AND (us.IdUsuario = pIdUsuario AND us.FechaHasta IS NULL);
+    SELECT      s.*  
+    FROM        Sucursales s
+    INNER JOIN  UsuariosSucursales us USING(IdSucursal)
+    WHERE       Nombre LIKE CONCAT('%', pCadena, '%') 
+                AND (s.IdTambo = pIdTambo)
+                AND (us.IdUsuario = pIdUsuario AND us.FechaHasta IS NULL);
 END$$
 DELIMITER ;
 

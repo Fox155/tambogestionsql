@@ -48,7 +48,7 @@ SALIR: BEGIN
         FROM UsuariosSucursales WHERE IdSucursal = pIdSucursal AND IdUsuario = pIdUsuario);
 
         INSERT INTO UsuariosSucursales
-        SELECT pNroUsuarioSucursal, pIdUsuario, pIdSucursal, NOW(), NULL;
+        SELECT      pIdUsuario, pIdSucursal, pNroUsuarioSucursal, NOW(), NULL;
 
         SELECT CONCAT ('OK', pNroUsuarioSucursal) Mensaje;
 	COMMIT;
